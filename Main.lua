@@ -654,11 +654,7 @@ MainModule.AutoDodge = {
         "rbxassetid://88451099342711",
         "rbxassetid://79649041083405", 
         "rbxassetid://73242877658272",
-        "rbxassetid://114928327045353",
-        "rbxassetid://135690448001690", 
-        "rbxassetid://103355259844069",
-        "rbxassetid://125906547773381",
-        "rbxassetid://121147456137931"
+        "rbxassetid://114928327045353"
     },
     Connections = {},
     LastDodgeTime = 0,
@@ -667,22 +663,54 @@ MainModule.AutoDodge = {
     RangeSquared = 5 * 5,
     AnimationIdsSet = {},
     
-    -- Система перехвата
     CapturedCall = nil,
     LastCapturedCallTime = 0,
     OriginalFireServer = nil,
     Remote = nil,
     
-    -- Для отслеживания игроков
-    TrackedPlayers = {}
+    TrackedPlayers = {},
+    GameCheckConnection = nil
 }
 
--- Заполняем сет анимаций
 for _, id in ipairs(MainModule.AutoDodge.AnimationIds) do
     MainModule.AutoDodge.AnimationIdsSet[id] = true
 end
 
--- ============ ОСНОВНЫЕ ИСПРАВЛЕНИЯ V2 ============
+-- Функция проверки активности игры (из V1)
+local function IsGameActive(gameName)
+    if not gameName then return false end
+    
+    local workspace = game:GetService("Workspace")
+    local lighting = game:GetService("Lighting")
+    local players = game:GetService("Players")
+    local LocalPlayer = players.LocalPlayer
+    
+    -- Проверка разных типов игр
+    if gameName == "HideAndSeek" then
+        -- Проверка для Hide and Seek
+        if workspace:FindFirstChild("GameModes") then
+            return true
+        end
+        
+        if lighting:FindFirstChild("Game") then
+            return true
+        end
+        
+        -- Проверка по игрокам
+        for _, player in pairs(players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local character = player.Character
+                if character then
+                    if character:FindFirstChild("Humanoid") and character.Humanoid.Health > 0 then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    
+    return false
+end
 
 local function setupRemoteHook()
     local remote = nil
@@ -711,38 +739,47 @@ local function setupRemoteHook()
     end
     
     if not remote then
-        warn("[AutoDodge] Remote 'UsedTool' not found!")
         return false
     end
     
     MainModule.AutoDodge.Remote = remote
     
-    -- Сохраняем оригинальный FireServer
-    local originalFireServer = remote.FireServer
-    
-    -- Перехватываем вызовы
-    remote.FireServer = function(self, ...)
+    -- Перехват вызовов (из V1)
+    MainModule.AutoDodge.OriginalFireServer = hookfunction(remote.FireServer, function(self, ...)
         local args = {...}
         
-        -- Ищем инструмент DODGE! в аргументах
-        local foundDodge = false
         for i, arg in ipairs(args) do
-            if typeof(arg) == "Instance" and arg:IsA("Tool") and arg.Name == "DODGE!" then
-                MainModule.AutoDodge.CapturedCall = {
-                    args = {unpack(args)},
-                    timestamp = tick(),
-                    tool = arg,
-                    remote = self
-                }
-                MainModule.AutoDodge.LastCapturedCallTime = tick()
-                foundDodge = true
-                break
+            if typeof(arg) == "Instance" and arg:IsA("Tool") then
+                if arg.Name == "DODGE!" then
+                    MainModule.AutoDodge.CapturedCall = {
+                        args = {unpack(args)},
+                        timestamp = tick(),
+                        tool = arg,
+                        remote = self
+                    }
+                    MainModule.AutoDodge.LastCapturedCallTime = tick()
+                    break
+                end
+            elseif typeof(arg) == "table" then
+                for _, v in pairs(arg) do
+                    if typeof(v) == "Instance" and v:IsA("Tool") then
+                        if v.Name == "DODGE!" then
+                            MainModule.AutoDodge.CapturedCall = {
+                                args = {unpack(args)},
+                                timestamp = tick(),
+                                tool = v,
+                                remote = self
+                            }
+                            MainModule.AutoDodge.LastCapturedCallTime = tick()
+                            break
+                        end
+                    end
+                end
             end
         end
         
-        -- Вызываем оригинальный метод
-        return originalFireServer(self, ...)
-    end
+        return MainModule.AutoDodge.OriginalFireServer(self, ...)
+    end)
     
     return true
 end
@@ -755,8 +792,11 @@ local function executeDodge()
     local currentTime = tick()
     local autoDodge = MainModule.AutoDodge
     
-    -- Проверка кулдауна
     if currentTime - autoDodge.LastDodgeTime < autoDodge.DodgeCooldown then
+        return false
+    end
+    
+    if not autoDodge.CapturedCall then
         return false
     end
     
@@ -765,7 +805,6 @@ local function executeDodge()
         return false 
     end
     
-    -- Поиск инструмента DODGE!
     local dodgeTool = nil
     local character = player.Character
     
@@ -781,28 +820,32 @@ local function executeDodge()
         return false
     end
     
-    autoDodge.LastDodgeTime = currentTime
-    
-    -- Используем сохраненный вызов или прямой вызов
-    if autoDodge.CapturedCall then
-        local success, err = pcall(function()
-            autoDodge.Remote:FireServer(dodgeTool)
-        end)
-        
-        if not success then
-            -- Попытка прямого вызова
-            pcall(function()
-                originalFireServer(autoDodge.Remote, dodgeTool)
-            end)
+    local modifiedArgs = {}
+    for i, arg in ipairs(autoDodge.CapturedCall.args) do
+        if typeof(arg) == "Instance" and arg:IsA("Tool") and arg.Name == "DODGE!" then
+            modifiedArgs[i] = dodgeTool
+        else
+            modifiedArgs[i] = arg
         end
-    else
-        -- Прямой вызов
-        pcall(function()
-            autoDodge.Remote:FireServer(dodgeTool)
-        end)
     end
     
-    return true
+    autoDodge.LastDodgeTime = currentTime
+    
+    local success, err = pcall(function()
+        autoDodge.Remote:FireServer(unpack(modifiedArgs))
+    end)
+    
+    if success then
+        return true
+    else
+        task.spawn(function()
+            pcall(function()
+                autoDodge.Remote:FireServer(dodgeTool)
+            end)
+        end)
+        
+        return false
+    end
 end
 
 local function isLookingAtPlayer(targetPlayer, localPlayer)
@@ -829,7 +872,6 @@ local function createInstantAnimationHandler(player)
         if not MainModule.AutoDodge.Enabled then return end
         if player == LocalPlayer then return end
         
-        -- Проверка анимации
         local animId
         if track and track.Animation then
             animId = track.Animation.AnimationId
@@ -840,22 +882,18 @@ local function createInstantAnimationHandler(player)
             return
         end
         
-        -- Проверка кулдауна
         local currentTime = tick()
         if currentTime - MainModule.AutoDodge.LastDodgeTime < MainModule.AutoDodge.DodgeCooldown then
             return
         end
         
-        -- Проверка существования персонажей
         if not LocalPlayer or not LocalPlayer.Character then return end
         if not player or not player.Character then return end
         
-        -- Проверка взгляда
         if not isLookingAtPlayer(player, LocalPlayer) then
             return
         end
         
-        -- Проверка дистанции
         local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
         
@@ -868,7 +906,6 @@ local function createInstantAnimationHandler(player)
             return
         end
         
-        -- Выполняем додж
         executeDodge()
     end
 end
@@ -882,14 +919,6 @@ local function setupInstantPlayerTracking(player)
         
         local humanoid = character:FindFirstChild("Humanoid")
         if not humanoid then
-            -- Ждем появления Humanoid
-            local conn
-            conn = character.ChildAdded:Connect(function(child)
-                if child.Name == "Humanoid" then
-                    conn:Disconnect()
-                    setupCharacter(character)
-                end
-            end)
             return
         end
         
@@ -910,7 +939,6 @@ local function setupInstantPlayerTracking(player)
     local charConn = player.CharacterAdded:Connect(function(character)
         if not MainModule.AutoDodge.Enabled then return end
         
-        -- Очищаем старые соединения
         if MainModule.AutoDodge.TrackedPlayers[player.Name] then
             for _, conn in pairs(MainModule.AutoDodge.TrackedPlayers[player.Name]) do
                 pcall(function() conn:Disconnect() end)
@@ -945,7 +973,6 @@ local function setupInstantReactionMonitor()
             if player == LocalPlayer then continue end
             if not player.Character then continue end
             
-            -- Проверка взгляда
             if not isLookingAtPlayer(player, LocalPlayer) then
                 continue
             end
@@ -953,7 +980,6 @@ local function setupInstantReactionMonitor()
             local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
             if not targetRoot then continue end
             
-            -- Проверка дистанции
             local diff = targetRoot.Position - localRoot.Position
             local distanceSquared = diff.X * diff.X + diff.Y * diff.Y + diff.Z * diff.Z
             
@@ -961,7 +987,6 @@ local function setupInstantReactionMonitor()
                 continue
             end
             
-            -- Проверка анимаций
             local humanoid = player.Character:FindFirstChild("Humanoid")
             if not humanoid then continue end
             
@@ -981,14 +1006,29 @@ local function setupInstantReactionMonitor()
     table.insert(MainModule.AutoDodge.Connections, renderConn)
 end
 
+-- Функция управления AutoDodge с проверкой игры
 function MainModule.ToggleAutoDodge(enabled)
-    -- Очистка перед включением
+    -- Используем SnowNatifility для уведомлений
+    if SnowNatifility and SnowNatifility.ShowNotification then
+        if enabled and not IsGameActive("HideAndSeek") then
+            SnowNatifility.ShowNotification("Auto Dodge", "Game not active", 2)
+            MainModule.AutoDodge.Enabled = false
+            return
+        end
+    end
+    
     MainModule.AutoDodge.Enabled = false
     
+    -- Очистка всех соединений
     for _, conn in pairs(MainModule.AutoDodge.Connections) do
         if conn then
             pcall(function() conn:Disconnect() end)
         end
+    end
+    
+    if MainModule.AutoDodge.GameCheckConnection then
+        pcall(function() MainModule.AutoDodge.GameCheckConnection:Disconnect() end)
+        MainModule.AutoDodge.GameCheckConnection = nil
     end
     
     MainModule.AutoDodge.Connections = {}
@@ -996,23 +1036,13 @@ function MainModule.ToggleAutoDodge(enabled)
     MainModule.AutoDodge.LastDodgeTime = 0
     
     if enabled then
-        -- Инициализация
-        local success = setupRemoteHook()
-        if not success then
-            MainModule.ShowNotification("Auto Dodge", "Failed to find remote!", 2)
-            return
-        end
-        
         MainModule.AutoDodge.Enabled = true
         
         local Players = game:GetService("Players")
-        local LocalPlayer = Players.LocalPlayer
         
-        -- Настройка отслеживания игроков
+        -- Мгновенная инициализация всех игроков
         for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                setupInstantPlayerTracking(player)
-            end
+            setupInstantPlayerTracking(player)
         end
         
         -- Отслеживание новых игроков
@@ -1026,40 +1056,68 @@ function MainModule.ToggleAutoDodge(enabled)
         -- Дополнительный мониторинг
         setupInstantReactionMonitor()
         
-        -- Отслеживание выхода игроков
-        local playerRemovingConn = Players.PlayerRemoving:Connect(function(player)
-            if MainModule.AutoDodge.TrackedPlayers[player.Name] then
-                for _, conn in pairs(MainModule.AutoDodge.TrackedPlayers[player.Name]) do
-                    pcall(function() conn:Disconnect() end)
+        -- Настройка перехвата
+        setupRemoteHook()
+        
+        -- Проверка окончания игры (каждую секунду)
+        MainModule.AutoDodge.GameCheckConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            if MainModule.AutoDodge.Enabled and not IsGameActive("HideAndSeek") then
+                MainModule.ToggleAutoDodge(false)
+                if SnowNatifility and SnowNatifility.ShowNotification then
+                    SnowNatifility.ShowNotification("Auto Dodge", "Game ended - disabled", 2)
                 end
-                MainModule.AutoDodge.TrackedPlayers[player.Name] = nil
             end
         end)
-        table.insert(MainModule.AutoDodge.Connections, playerRemovingConn)
         
-        MainModule.ShowNotification("Auto Dodge", "Enabled", 2)
+        table.insert(MainModule.AutoDodge.Connections, MainModule.AutoDodge.GameCheckConnection)
+        
+        if SnowNatifility and SnowNatifility.ShowNotification then
+            SnowNatifility.ShowNotification("Auto Dodge", "Enabled", 2)
+        end
     else
-        MainModule.ShowNotification("Auto Dodge", "Disabled", 2)
+        if SnowNatifility and SnowNatifility.ShowNotification then
+            SnowNatifility.ShowNotification("Auto Dodge", "Disabled", 2)
+        end
     end
 end
 
--- ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
+-- Обработка выхода игрока
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+Players.PlayerRemoving:Connect(function(player)
+    if player == LocalPlayer then
+        MainModule.ToggleAutoDodge(false)
+    elseif MainModule.AutoDodge.TrackedPlayers[player.Name] then
+        for _, conn in pairs(MainModule.AutoDodge.TrackedPlayers[player.Name]) do
+            pcall(function() conn:Disconnect() end)
+        end
+        MainModule.AutoDodge.TrackedPlayers[player.Name] = nil
+    end
+end)
+
+-- Вспомогательные функции
+function MainModule.ShowCapturedCall()
+    if MainModule.AutoDodge.CapturedCall then
+        return MainModule.AutoDodge.CapturedCall
+    else
+        return nil
+    end
+end
+
+function MainModule.ClearCapturedCall()
+    MainModule.AutoDodge.CapturedCall = nil
+end
 
 function MainModule.ForceDodge()
-    return executeDodge()
+    local result = executeDodge()
+    return result
 end
 
-function MainModule.GetDodgeStatus()
-    return {
-        Enabled = MainModule.AutoDodge.Enabled,
-        LastDodgeTime = MainModule.AutoDodge.LastDodgeTime,
-        CooldownRemaining = math.max(0, MainModule.AutoDodge.DodgeCooldown - (tick() - MainModule.AutoDodge.LastDodgeTime))
-    }
-end
+-- Инициализация
+task.wait(0.4)
 
--- Автоматическая инициализация при запуске
 task.spawn(function()
-    task.wait(1)
     if MainModule.AutoDodge.Enabled then
         MainModule.ToggleAutoDodge(true)
     end
