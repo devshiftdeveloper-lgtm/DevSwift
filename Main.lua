@@ -20,13 +20,17 @@ function MainModule.ShowNotification(title, text, duration)
         local gui = Instance.new("ScreenGui")
         gui.Name = "NotificationGui"
         gui.ResetOnSpawn = false
+        gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+        gui.DisplayOrder = 1000
         gui.Parent = game:GetService("CoreGui")
 
         local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 350, 0, 80)
-        frame.Position = UDim2.new(1, -370, 0, 50)
+        frame.Size = UDim2.new(0, 300, 0, 0)
+        frame.Position = UDim2.new(1, -320, 0, 50)
         frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         frame.BorderSizePixel = 0
+        frame.ClipsDescendants = true
+        frame.ZIndex = 1001
         frame.Parent = gui
 
         local corner = Instance.new("UICorner")
@@ -36,34 +40,47 @@ function MainModule.ShowNotification(title, text, duration)
         local stroke = Instance.new("UIStroke")
         stroke.Color = Color3.fromRGB(60, 60, 60)
         stroke.Thickness = 2
+        stroke.ZIndex = 1001
         stroke.Parent = frame
 
         local titleLabel = Instance.new("TextLabel")
-        titleLabel.Size = UDim2.new(1, -20, 0, 25)
+        titleLabel.Size = UDim2.new(1, -20, 0, 30)
         titleLabel.Position = UDim2.new(0, 10, 0, 10)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = title
         titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-        titleLabel.TextSize = 18
+        titleLabel.TextSize = 16
         titleLabel.Font = Enum.Font.GothamBold
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.ZIndex = 1002
         titleLabel.Parent = frame
 
         local textLabel = Instance.new("TextLabel")
-        textLabel.Size = UDim2.new(1, -20, 1, -40)
-        textLabel.Position = UDim2.new(0, 10, 0, 35)
+        textLabel.Size = UDim2.new(1, -20, 1, -45)
+        textLabel.Position = UDim2.new(0, 10, 0, 45)
         textLabel.BackgroundTransparency = 1
         textLabel.Text = text
         textLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        textLabel.TextSize = 14
+        textLabel.TextSize = 12
         textLabel.Font = Enum.Font.Gotham
         textLabel.TextXAlignment = Enum.TextXAlignment.Left
         textLabel.TextYAlignment = Enum.TextYAlignment.Top
         textLabel.TextWrapped = true
+        textLabel.ZIndex = 1002
         textLabel.Parent = frame
 
+        textLabel:GetPropertyChangedSignal("TextBounds"):Connect(function()
+            local textHeight = textLabel.TextBounds.Y + 55
+            frame.Size = UDim2.new(0, 300, 0, math.min(textHeight, 150))
+            TweenService:Create(frame, TweenInfo.new(0.3), {
+                Position = UDim2.new(1, -320, 0, 50)
+            }):Play()
+        end)
+
+        local textHeight = textLabel.TextBounds.Y + 55
+        frame.Size = UDim2.new(0, 300, 0, math.min(textHeight, 150))
         TweenService:Create(frame, TweenInfo.new(0.3), {
-            Position = UDim2.new(1, -370, 0, 50)
+            Position = UDim2.new(1, -320, 0, 50)
         }):Play()
 
         task.wait(duration)
@@ -272,16 +289,6 @@ MainModule.SpikesKillFeature = {
 }
 
 function MainModule.ToggleSpikesKill(enabled)
-    if enabled then
-        local hasKnife = MainModule.CheckKnifeInInventory()
-        if not hasKnife then
-            MainModule.ShowNotification("Spikes Kill", "Knife not found!", 3)
-            MainModule.SpikesKillFeature.Enabled = false
-            return
-        end
-        MainModule.SpikesKillFeature.HasKnife = true
-    end
-    
     MainModule.SpikesKillFeature.Enabled = enabled
     
     if MainModule.SpikesKillFeature.AnimationConnection then
@@ -416,7 +423,7 @@ function MainModule.ToggleSpikesKill(enabled)
         end
     end)
     
-    MainModule.ShowNotification("Spikes Kill", "Enabled - Requires Knife", 2)
+    MainModule.ShowNotification("Spikes Kill", "Enabled", 2)
 end
 
 MainModule.AutoGonggi = {
@@ -923,6 +930,505 @@ function MainModule.TeleportToHider()
     end)
 end
 
-print("Main.lua loaded successfully")
+MainModule.TugOfWar = {
+    AutoPull = false,
+    Connection = nil
+}
+
+function MainModule.AntiMiss(enabled)
+    MainModule.TugOfWar.AutoPull = enabled
+    
+    if MainModule.TugOfWar.Connection then
+        MainModule.TugOfWar.Connection:Disconnect()
+        MainModule.TugOfWar.Connection = nil
+    end
+
+    if enabled then
+        MainModule.TugOfWar.Connection = RunService.Heartbeat:Connect(function()
+            if not MainModule.TugOfWar.AutoPull then return end
+            
+            local player = Players.LocalPlayer
+            local gui = player:FindFirstChild("PlayerGui")
+            if gui then
+                gui = gui:FindFirstChild("QTEEvents")
+                if gui then
+                    local progress = gui:FindFirstChild("Progress")
+                    if progress then
+                        local crossHair = progress:FindFirstChild("CrossHair")
+                        local goalDot = progress:FindFirstChild("GoalDot")
+                        
+                        if crossHair and goalDot and crossHair.Parent and goalDot.Parent then
+                            crossHair.Rotation = goalDot.Rotation
+                        end
+                        
+                        local buttons = progress:GetChildren()
+                        for _, button in ipairs(buttons) do
+                            if button:IsA("TextButton") or button:IsA("ImageButton") then
+                                if button.Visible and button.Active then
+                                    pcall(function()
+                                        button:FireEvent("MouseButton1Click")
+                                        button:FireEvent("Activated")
+                                    end)
+                                end
+                            elseif button:IsA("ProximityPrompt") then
+                                pcall(function()
+                                    fireproximityprompt(button)
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+            
+            task.wait(0.01)
+        end)
+    end
+end
+
+MainModule.GlassBridge = {
+    AntiBreakEnabled = false,
+    AntiBreakConnection = nil,
+    GlassESPEnabled = false,
+    GlassESPConnections = {},
+    GlassESPConnection2 = nil
+}
+
+function MainModule.GlassBridgeAntiBreak(state)
+    MainModule.GlassBridge.AntiBreakEnabled = state
+    if not state then
+        if MainModule.GlassBridge.AntiBreakConnection then
+            MainModule.GlassBridge.AntiBreakConnection:Disconnect()
+            MainModule.GlassBridge.AntiBreakConnection = nil
+        end
+        return
+    end
+    
+    local function createSafetyPlatforms()
+        local GlassHolder = workspace:FindFirstChild("GlassBridge") and workspace.GlassBridge:FindFirstChild("GlassHolder")
+        if not GlassHolder then return end
+        
+        for _, lane in pairs(GlassHolder:GetChildren()) do
+            for _, glassModel in pairs(lane:GetChildren()) do
+                if glassModel:IsA("Model") and glassModel.PrimaryPart then
+                    if not glassModel:FindFirstChild("SafetyPlatform") then
+                        local part = glassModel.PrimaryPart
+                        local platformPosition = Vector3.new(
+                            part.Position.X,
+                            part.Position.Y - 6,
+                            part.Position.Z
+                        )
+                        
+                        local platform = Instance.new("Part")
+                        platform.Name = "SafetyPlatform"
+                        platform.Size = Vector3.new(10, 1, 10)
+                        platform.Position = platformPosition
+                        platform.Anchored = true
+                        platform.CanCollide = true
+                        platform.Transparency = 0.5
+                        platform.Color = Color3.fromRGB(255, 255, 255)
+                        platform.Material = Enum.Material.SmoothPlastic
+                        platform.Parent = glassModel
+                    end
+                end
+            end
+        end
+    end
+    
+    MainModule.GlassBridge.AntiBreakConnection = RunService.Heartbeat:Connect(function()
+        local GlassHolder = workspace:FindFirstChild("GlassBridge") and workspace.GlassBridge:FindFirstChild("GlassHolder")
+        if not GlassHolder then return end
+        
+        createSafetyPlatforms()
+        
+        for _, v in pairs(GlassHolder:GetChildren()) do
+            for _, j in pairs(v:GetChildren()) do
+                if j:IsA("Model") and j.PrimaryPart then
+                    if j.PrimaryPart:GetAttribute("exploitingisevil") ~= nil then
+                        j.PrimaryPart:SetAttribute("exploitingisevil", nil)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function updateGlassESP()
+    if not workspace:FindFirstChild("GlassBridge") then return end
+    
+    local GlassHolder = workspace.GlassBridge:FindFirstChild("GlassHolder")
+    if not GlassHolder then return end
+    
+    for _, lane in pairs(GlassHolder:GetChildren()) do
+        for _, glassModel in pairs(lane:GetChildren()) do
+            if glassModel:IsA("Model") and glassModel.PrimaryPart then
+                if not glassModel:FindFirstChild("GlassESP") then
+                    local part = glassModel.PrimaryPart
+                    
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "GlassESP"
+                    highlight.Adornee = part
+                    highlight.FillColor = Color3.fromRGB(0, 150, 255)
+                    highlight.FillTransparency = 0.7
+                    highlight.OutlineColor = Color3.fromRGB(0, 100, 200)
+                    highlight.OutlineTransparency = 0
+                    highlight.Parent = glassModel
+                    
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Name = "GlassESPBillboard"
+                    billboard.Size = UDim2.new(0, 100, 0, 40)
+                    billboard.StudsOffset = Vector3.new(0, 3, 0)
+                    billboard.AlwaysOnTop = true
+                    billboard.Adornee = part
+                    billboard.Parent = glassModel
+                    
+                    local textLabel = Instance.new("TextLabel")
+                    textLabel.Size = UDim2.new(1, 0, 1, 0)
+                    textLabel.BackgroundTransparency = 1
+                    textLabel.Text = "🪟 Glass"
+                    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    textLabel.TextStrokeTransparency = 0
+                    textLabel.Font = Enum.Font.SourceSansBold
+                    textLabel.TextScaled = true
+                    textLabel.Parent = billboard
+                end
+            end
+        end
+    end
+end
+
+local function clearGlassESP()
+    if workspace:FindFirstChild("GlassBridge") then
+        local GlassHolder = workspace.GlassBridge:FindFirstChild("GlassHolder")
+        if GlassHolder then
+            for _, lane in pairs(GlassHolder:GetChildren()) do
+                for _, glassModel in pairs(lane:GetChildren()) do
+                    if glassModel:IsA("Model") then
+                        local esp = glassModel:FindFirstChild("GlassESP")
+                        if esp then esp:Destroy() end
+                        
+                        local billboard = glassModel:FindFirstChild("GlassESPBillboard")
+                        if billboard then billboard:Destroy() end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function MainModule.EnableGlassESP(state)
+    MainModule.GlassBridge.GlassESPEnabled = state
+    
+    if state then
+        updateGlassESP()
+        
+        MainModule.GlassBridge.GlassESPConnections["workspace"] = workspace.ChildAdded:Connect(function(child)
+            if child.Name == "GlassBridge" then
+                task.wait(1)
+                updateGlassESP()
+            end
+        end)
+        
+        MainModule.GlassBridge.GlassESPConnection2 = RunService.Heartbeat:Connect(function()
+            if MainModule.GlassBridge.GlassESPEnabled then
+                updateGlassESP()
+            end
+        end)
+    else
+        clearGlassESP()
+        
+        for name, conn in pairs(MainModule.GlassBridge.GlassESPConnections) do
+            if conn then
+                conn:Disconnect()
+            end
+        end
+        MainModule.GlassBridge.GlassESPConnections = {}
+        
+        if MainModule.GlassBridge.GlassESPConnection2 then
+            MainModule.GlassBridge.GlassESPConnection2:Disconnect()
+            MainModule.GlassBridge.GlassESPConnection2 = nil
+        end
+    end
+end
+
+function MainModule.GlassBridgeTeleportToEnd()
+    task.spawn(function()
+        local character = GetCharacter()
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            character.HumanoidRootPart.CFrame = CFrame.new(-196.372467, 522.192139, -1534.20984)
+            MainModule.ShowNotification("Glass Bridge", "Teleported to End", 2)
+        end
+    end)
+end
+
+MainModule.MingleVoidKill = {
+    Enabled = false,
+    AnimationId = "rbxassetid://71318091779666",
+    OriginalPosition = nil,
+    OriginalCFrame = nil,
+    Platform = nil,
+    AnimationTrack = nil,
+    Connections = {},
+    PlatformHeight = -30,
+    PlatformTeleportYOffset = 3,
+    PlatformSize = Vector3.new(100, 10, 100),
+    PlatformColor = Color3.fromRGB(0, 170, 255),
+    IsOnPlatform = false,
+    AnimationStartTime = 0
+}
+
+local function createSafetyPlatformMingleVoidKill(position)
+    if MainModule.MingleVoidKill.Platform then
+        MainModule.MingleVoidKill.Platform:Destroy()
+        MainModule.MingleVoidKill.Platform = nil
+    end
+    
+    local platformPosition = Vector3.new(
+        position.X,
+        position.Y + MainModule.MingleVoidKill.PlatformHeight,
+        position.Z
+    )
+    
+    local platform = Instance.new("Part")
+    platform.Name = "MingleVoidKillSafetyPlatform"
+    platform.Size = MainModule.MingleVoidKill.PlatformSize
+    platform.Position = platformPosition
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.Transparency = 0.7
+    platform.Color = MainModule.MingleVoidKill.PlatformColor
+    platform.Material = Enum.Material.Neon
+    
+    local pointLight = Instance.new("PointLight")
+    pointLight.Brightness = 0.5
+    pointLight.Range = 50
+    pointLight.Color = Color3.fromRGB(0, 200, 255)
+    pointLight.Parent = platform
+    
+    platform.Transparency = 0.8
+    local selectionBox = Instance.new("SelectionBox")
+    selectionBox.Adornee = platform
+    selectionBox.Color3 = Color3.fromRGB(0, 255, 255)
+    selectionBox.LineThickness = 0.05
+    selectionBox.Parent = platform
+    
+    platform.Parent = workspace
+    
+    MainModule.MingleVoidKill.Platform = platform
+    return platform
+end
+
+local function teleportToPlatformMingleVoidKill(originalPosition)
+    local player = game:GetService("Players").LocalPlayer
+    if not player or not player.Character then
+        return false
+    end
+    
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+        return false
+    end
+    
+    MainModule.MingleVoidKill.OriginalPosition = originalPosition
+    MainModule.MingleVoidKill.OriginalCFrame = CFrame.new(originalPosition)
+    
+    local platform = createSafetyPlatformMingleVoidKill(originalPosition)
+    
+    local teleportPosition = Vector3.new(
+        platform.Position.X,
+        platform.Position.Y + MainModule.MingleVoidKill.PlatformTeleportYOffset,
+        platform.Position.Z
+    )
+    
+    humanoidRootPart.CFrame = CFrame.new(teleportPosition)
+    MainModule.MingleVoidKill.IsOnPlatform = true
+    MainModule.MingleVoidKill.AnimationStartTime = tick()
+    
+    return true
+end
+
+local function returnToOriginalPositionMingleVoidKill()
+    local player = game:GetService("Players").LocalPlayer
+    if not player or not player.Character then
+        return false
+    end
+    
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+        return false
+    end
+    
+    if MainModule.MingleVoidKill.OriginalPosition then
+        local returnPosition = Vector3.new(
+            MainModule.MingleVoidKill.OriginalPosition.X,
+            MainModule.MingleVoidKill.OriginalPosition.Y,
+            MainModule.MingleVoidKill.OriginalPosition.Z
+        )
+        
+        humanoidRootPart.CFrame = CFrame.new(returnPosition)
+    end
+    
+    MainModule.MingleVoidKill.IsOnPlatform = false
+    
+    if MainModule.MingleVoidKill.Platform then
+        MainModule.MingleVoidKill.Platform:Destroy()
+        MainModule.MingleVoidKill.Platform = nil
+    end
+    
+    MainModule.MingleVoidKill.OriginalPosition = nil
+    MainModule.MingleVoidKill.OriginalCFrame = nil
+    MainModule.MingleVoidKill.AnimationTrack = nil
+    
+    return true
+end
+
+local function setupAnimationTrackerMingleVoidKill()
+    local player = game:GetService("Players").LocalPlayer
+    if not player then return end
+    
+    local function onCharacterAdded(character)
+        local humanoid = character:WaitForChild("Humanoid", 1)
+        if not humanoid then return end
+        
+        humanoid.AnimationPlayed:Connect(function(track)
+            if not MainModule.MingleVoidKill.Enabled then return end
+            
+            local animId = track.Animation and track.Animation.AnimationId
+            if animId == MainModule.MingleVoidKill.AnimationId then
+                local currentPosition = nil
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    currentPosition = humanoidRootPart.Position
+                else
+                    currentPosition = character:GetPivot().Position
+                end
+                
+                teleportToPlatformMingleVoidKill(currentPosition)
+                MainModule.MingleVoidKill.AnimationTrack = track
+                
+                local connection
+                connection = game:GetService("RunService").Heartbeat:Connect(function()
+                    if not track or not track.IsPlaying then
+                        returnToOriginalPositionMingleVoidKill()
+                        
+                        if connection then
+                            connection:Disconnect()
+                        end
+                    end
+                })
+                
+                table.insert(MainModule.MingleVoidKill.Connections, connection)
+            end
+        end)
+    end
+    
+    if player.Character then
+        onCharacterAdded(player.Character)
+    end
+    
+    player.CharacterAdded:Connect(onCharacterAdded)
+    
+    local heartbeatConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not MainModule.MingleVoidKill.Enabled then return end
+        
+        local character = player.Character
+        if not character then return end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        if not humanoid then return end
+        
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        
+        for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+            if track and track.Animation then
+                local animId = track.Animation.AnimationId
+                if animId == MainModule.MingleVoidKill.AnimationId then
+                    
+                    if not MainModule.MingleVoidKill.IsOnPlatform then
+                        local currentPosition = nil
+                        if humanoidRootPart then
+                            currentPosition = humanoidRootPart.Position
+                        else
+                            currentPosition = character:GetPivot().Position
+                        end
+                        
+                        teleportToPlatformMingleVoidKill(currentPosition)
+                        MainModule.MingleVoidKill.AnimationTrack = track
+                    end
+                end
+            end
+        end
+        
+        if MainModule.MingleVoidKill.AnimationTrack and MainModule.MingleVoidKill.IsOnPlatform then
+            local shouldReturn = false
+            
+            if MainModule.MingleVoidKill.AnimationTrack then
+                if not MainModule.MingleVoidKill.AnimationTrack.IsPlaying then
+                    shouldReturn = true
+                end
+            else
+                if tick() - MainModule.MingleVoidKill.AnimationStartTime > 10 then
+                    shouldReturn = true
+                end
+            end
+            
+            if shouldReturn then
+                returnToOriginalPositionMingleVoidKill()
+            end
+        end
+        
+        if MainModule.MingleVoidKill.IsOnPlatform and tick() - MainModule.MingleVoidKill.AnimationStartTime > 15 then
+            returnToOriginalPositionMingleVoidKill()
+        end
+    end)
+    
+    table.insert(MainModule.MingleVoidKill.Connections, heartbeatConnection)
+end
+
+function MainModule.ToggleMingleVoidKill(enabled)
+    MainModule.MingleVoidKill.Enabled = false
+    
+    for _, conn in pairs(MainModule.MingleVoidKill.Connections) do
+        if conn then
+            pcall(function() conn:Disconnect() end)
+        end
+    end
+    MainModule.MingleVoidKill.Connections = {}
+    
+    if MainModule.MingleVoidKill.Platform then
+        MainModule.MingleVoidKill.Platform:Destroy()
+        MainModule.MingleVoidKill.Platform = nil
+    end
+    
+    MainModule.MingleVoidKill.OriginalPosition = nil
+    MainModule.MingleVoidKill.OriginalCFrame = nil
+    MainModule.MingleVoidKill.AnimationTrack = nil
+    MainModule.MingleVoidKill.IsOnPlatform = false
+    MainModule.MingleVoidKill.AnimationStartTime = 0
+    
+    if enabled then
+        MainModule.MingleVoidKill.Enabled = true
+        setupAnimationTrackerMingleVoidKill()
+    end
+end
+
+local function isGameActive(gameName)
+    local values = workspace:FindFirstChild("Values")
+    if not values then return false end
+    
+    local currentGame = values:FindFirstChild("CurrentGame")
+    if not currentGame then return false end
+    
+    return currentGame.Value == gameName
+end
+
+function MainModule.checkGameActive(gameName, funcName)
+    if not isGameActive(gameName) then
+        MainModule.ShowNotification(funcName, gameName .. " is not active", 3)
+        return false
+    end
+    return true
+end
 
 return MainModule
