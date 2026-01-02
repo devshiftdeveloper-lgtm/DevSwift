@@ -55,7 +55,7 @@ end
 
 local function loadFromRepo()
     local success, result = pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/devshiftdeveloper-lgtm/DevSwift/main/DevShift.lua"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/devshiftdeveloper-lgtm/DevSwift/main/Devift.lua"))()
         return true
     end)
     
@@ -594,38 +594,14 @@ end
 
 local function loadDevShiftScript()
     local success, result = pcall(function()
-        local DevShift = {
-            Version = "2026.1.1",
-            Status = "Active",
-            
-            Execute = function(code)
-                local func, err = loadstring(code)
-                if func then
-                    return pcall(func)
-                else
-                    return false, err
-                end
-            end,
-            
-            GetScripts = function()
-                return {
-                    "Infinite Yield",
-                    "CMD-X",
-                    "Dark Dex",
-                    "Simple Spy",
-                    "Remote Spy"
-                }
-            end,
-            
-            ClearConsole = function()
-            end
-        }
-        
-        getfenv().DevShift = DevShift
-        
-        return DevShift
+        local response = game:HttpGet("https://raw.githubusercontent.com/devshiftdeveloper-lgtm/DevSwift/main/DevShift.lua")
+        local func = loadstring(response)
+        if func then
+            return pcall(func)
+        else
+            return false, "Load failed"
+        end
     end)
-    
     return success, result
 end
 
