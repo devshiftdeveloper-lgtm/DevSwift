@@ -29,6 +29,7 @@ function MainModule.ShowNotification(title, text, duration)
         frame.Position = UDim2.new(1, -370, 0, 50)
         frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         frame.BorderSizePixel = 0
+        frame.ZIndex = 9999
         frame.Parent = gui
 
         local corner = Instance.new("UICorner")
@@ -49,6 +50,7 @@ function MainModule.ShowNotification(title, text, duration)
         titleLabel.TextSize = 18
         titleLabel.Font = Enum.Font.GothamBold
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.ZIndex = 10000
         titleLabel.Parent = frame
 
         local textLabel = Instance.new("TextLabel")
@@ -63,6 +65,7 @@ function MainModule.ShowNotification(title, text, duration)
         textLabel.TextYAlignment = Enum.TextYAlignment.Top
         textLabel.TextWrapped = true
         textLabel.AutomaticSize = Enum.AutomaticSize.Y
+        textLabel.ZIndex = 10000
         textLabel.Parent = frame
 
         frame.Size = UDim2.new(0, 350, 0, textLabel.TextBounds.Y + 50)
@@ -146,15 +149,45 @@ local function IsGameActive(gameName)
     return currentGame.Value == gameName
 end
 
+local function SafeTeleport(position)
+    local character = GetCharacter()
+    if character then
+        local rootPart = GetRootPart(character)
+        if rootPart then
+            rootPart.CFrame = CFrame.new(position)
+            return true
+        end
+    end
+    return false
+end
+
+local function GetEnemies()
+    local enemies = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(enemies, player.Name)
+        end
+    end
+    return enemies
+end
+
+local function KillEnemy(enemyName)
+    local enemy = Players:FindFirstChild(enemyName)
+    if enemy and enemy.Character then
+        local humanoid = enemy.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:TakeDamage(100)
+        end
+    end
+end
+
 function MainModule.RLGL_TP_ToStart()
     task.spawn(function()
         if not IsGameActive("RedLightGreenLight") then
             MainModule.ShowNotification("RLGL", "Game not active", 2)
             return
         end
-        local character = GetCharacter()
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            character.HumanoidRootPart.CFrame = CFrame.new(-55.3, 1023.1, -545.8)
+        if SafeTeleport(Vector3.new(-55.3, 1023.1, -545.8)) then
             MainModule.ShowNotification("RLGL", "Teleported to Start", 2)
         end
     end)
@@ -166,9 +199,7 @@ function MainModule.RLGL_TP_ToEnd()
             MainModule.ShowNotification("RLGL", "Game not active", 2)
             return
         end
-        local character = GetCharacter()
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            character.HumanoidRootPart.CFrame = CFrame.new(-214.4, 1023.1, 146.7)
+        if SafeTeleport(Vector3.new(-214.4, 1023.1, 146.7)) then
             MainModule.ShowNotification("RLGL", "Teleported to End", 2)
         end
     end)
@@ -222,20 +253,38 @@ MainModule.HNS = {
 }
 
 function MainModule.ToggleHNSInfinityStamina(enabled)
-    if not IsGameActive("HideAndSeek") then
+    if enabled and not IsGameActive("HideAndSeek") then
         MainModule.ShowNotification("HNS", "Game not active", 2)
+        MainModule.HNS.InfinityStaminaEnabled = false
         return
     end
-    MainModule.HNS.InfinityStaminaEnabled = enabled
     
     if MainModule.HNS.InfinityStaminaConnection then
         MainModule.HNS.InfinityStaminaConnection:Disconnect()
         MainModule.HNS.InfinityStaminaConnection = nil
     end
     
+    MainModule.HNS.InfinityStaminaEnabled = enabled
+    
     if enabled then
         MainModule.HNS.InfinityStaminaConnection = RunService.Heartbeat:Connect(function()
-            if not MainModule.HNS.InfinityStaminaEnabled then return end
+            if not MainModule.HNS.InfinityStaminaEnabled then 
+                if MainModule.HNS.InfinityStaminaConnection then
+                    MainModule.HNS.InfinityStaminaConnection:Disconnect()
+                    MainModule.HNS.InfinityStaminaConnection = nil
+                end
+                return 
+            end
+            
+            if not IsGameActive("HideAndSeek") then
+                MainModule.HNS.InfinityStaminaEnabled = false
+                if MainModule.HNS.InfinityStaminaConnection then
+                    MainModule.HNS.InfinityStaminaConnection:Disconnect()
+                    MainModule.HNS.InfinityStaminaConnection = nil
+                end
+                MainModule.ShowNotification("HNS", "Game ended - Infinity Stamina disabled", 2)
+                return
+            end
             
             local character = GetCharacter()
             if character then
@@ -249,34 +298,6 @@ function MainModule.ToggleHNSInfinityStamina(enabled)
     else
         MainModule.ShowNotification("HNS", "Infinity Stamina: OFF", 2)
     end
-end
-
-function MainModule.CheckKnifeInInventory()
-    local character = GetCharacter()
-    if not character then return false end
-    
-    for _, tool in pairs(character:GetChildren()) do
-        if tool:IsA("Tool") then
-            local toolName = tool.Name:lower()
-            if toolName:find("knife") or toolName:find("fork") or toolName:find("dagger") or toolName:find("нож") then
-                return true, tool
-            end
-        end
-    end
-    
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    if backpack then
-        for _, tool in pairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") then
-                local toolName = tool.Name:lower()
-                if toolName:find("knife") or toolName:find("fork") or toolName:find("dagger") or toolName:find("нож") then
-                    return true, tool
-                end
-            end
-        end
-    end
-    
-    return false, nil
 end
 
 MainModule.SpikesKillFeature = {
@@ -296,20 +317,15 @@ MainModule.SpikesKillFeature = {
     SafetyCheckConnection = nil,
     OriginalSpikes = {},
     SpikesRemoved = false,
-    KnifeCheckConnection = nil,
-    LastKnifeCheckTime = 0,
-    KnifeCheckCooldown = 0.5,
-    HasKnife = false,
-    NoKnifeTimer = 0,
-    NoKnifeTimeout = 2
+    NoKnifeTimer = 0
 }
 
 function MainModule.ToggleSpikesKill(enabled)
-    if not IsGameActive("HideAndSeek") then
+    if enabled and not IsGameActive("HideAndSeek") then
         MainModule.ShowNotification("Spikes Kill", "Game not active", 2)
+        MainModule.SpikesKillFeature.Enabled = false
         return
     end
-    MainModule.SpikesKillFeature.Enabled = enabled
     
     if MainModule.SpikesKillFeature.AnimationConnection then
         MainModule.SpikesKillFeature.AnimationConnection:Disconnect()
@@ -327,10 +343,6 @@ function MainModule.ToggleSpikesKill(enabled)
         MainModule.SpikesKillFeature.AnimationCheckConnection:Disconnect()
         MainModule.SpikesKillFeature.AnimationCheckConnection = nil
     end
-    if MainModule.SpikesKillFeature.KnifeCheckConnection then
-        MainModule.SpikesKillFeature.KnifeCheckConnection:Disconnect()
-        MainModule.SpikesKillFeature.KnifeCheckConnection = nil
-    end
     
     for _, conn in ipairs(MainModule.SpikesKillFeature.AnimationStoppedConnections) do
         pcall(function() conn:Disconnect() end)
@@ -344,8 +356,8 @@ function MainModule.ToggleSpikesKill(enabled)
     MainModule.SpikesKillFeature.NoKnifeTimer = 0
     
     if not enabled then
-        MainModule.SpikesKillFeature.HasKnife = false
         MainModule.ShowNotification("Spikes Kill", "Disabled", 2)
+        MainModule.SpikesKillFeature.Enabled = false
         return
     end
     
@@ -432,8 +444,21 @@ function MainModule.ToggleSpikesKill(enabled)
     end)
     
     MainModule.SpikesKillFeature.SafetyCheckConnection = RunService.Heartbeat:Connect(function()
-        if not MainModule.SpikesKillFeature.ActiveAnimation then return end
-        if tick() - MainModule.SpikesKillFeature.AnimationStartTime >= 10 then
+        if not MainModule.SpikesKillFeature.Enabled then 
+            if MainModule.SpikesKillFeature.SafetyCheckConnection then
+                MainModule.SpikesKillFeature.SafetyCheckConnection:Disconnect()
+                MainModule.SpikesKillFeature.SafetyCheckConnection = nil
+            end
+            return 
+        end
+        
+        if not IsGameActive("HideAndSeek") then
+            MainModule.SpikesKillFeature.Enabled = false
+            MainModule.ShowNotification("Spikes Kill", "Game ended - disabled", 2)
+            return
+        end
+        
+        if MainModule.SpikesKillFeature.ActiveAnimation and tick() - MainModule.SpikesKillFeature.AnimationStartTime >= 10 then
             local character = GetCharacter()
             if character and MainModule.SpikesKillFeature.OriginalCFrame then
                 returnToOriginalPosition(character)
@@ -443,6 +468,7 @@ function MainModule.ToggleSpikesKill(enabled)
         end
     end)
     
+    MainModule.SpikesKillFeature.Enabled = true
     MainModule.ShowNotification("Spikes Kill", "Enabled", 2)
 end
 
@@ -568,13 +594,10 @@ local function processGonggiStones()
 end
 
 function MainModule.ToggleAutoGonggi(enabled)
-    if not IsGameActive("Gonggi") then
-        MainModule.ShowNotification("Auto Gonggi", "Game not active", 2)
+    if enabled and workspace:FindFirstChild("PentathlonMap") == nil then
+        MainModule.ShowNotification("Auto Gonggi", "Pentathlon not active", 2)
+        MainModule.AutoGonggi.Enabled = false
         return
-    end
-    
-    if MainModule.AutoGonggi.Enabled == enabled then
-        return MainModule.AutoGonggi.Enabled
     end
     
     if MainModule.AutoGonggi.QTEThread then
@@ -596,6 +619,11 @@ function MainModule.ToggleAutoGonggi(enabled)
     if enabled then
         MainModule.AutoGonggi.QTEThread = task.spawn(function()
             while MainModule.AutoGonggi.Enabled do
+                if workspace:FindFirstChild("PentathlonMap") == nil then
+                    MainModule.AutoGonggi.Enabled = false
+                    MainModule.ShowNotification("Auto Gonggi", "Pentathlon ended - disabled", 2)
+                    break
+                end
                 processGonggiQTE()
                 task.wait(MainModule.AutoGonggi.CheckInterval)
             end
@@ -603,6 +631,10 @@ function MainModule.ToggleAutoGonggi(enabled)
         
         MainModule.AutoGonggi.StoneThread = task.spawn(function()
             while MainModule.AutoGonggi.Enabled do
+                if workspace:FindFirstChild("PentathlonMap") == nil then
+                    MainModule.AutoGonggi.Enabled = false
+                    break
+                end
                 processGonggiStones()
                 task.wait(MainModule.AutoGonggi.StoneCheckInterval)
             end
@@ -881,8 +913,9 @@ local function setupInstantReactionMonitor()
 end
 
 function MainModule.ToggleAutoDodge(enabled)
-    if not IsGameActive("HideAndSeek") then
+    if enabled and not IsGameActive("HideAndSeek") then
         MainModule.ShowNotification("Auto Dodge", "Game not active", 2)
+        MainModule.AutoDodge.Enabled = false
         return
     end
     
@@ -916,6 +949,15 @@ function MainModule.ToggleAutoDodge(enabled)
         
         setupInstantReactionMonitor()
         setupRemoteHook()
+        
+        local checkConnection = RunService.Heartbeat:Connect(function()
+            if MainModule.AutoDodge.Enabled and not IsGameActive("HideAndSeek") then
+                MainModule.AutoDodge.Enabled = false
+                MainModule.ShowNotification("Auto Dodge", "Game ended - disabled", 2)
+                checkConnection:Disconnect()
+            end
+        end)
+        table.insert(MainModule.AutoDodge.Connections, checkConnection)
         
         MainModule.ShowNotification("Auto Dodge", "Enabled", 2)
     else
@@ -970,8 +1012,9 @@ MainModule.TugOfWar = {
 }
 
 function MainModule.ToggleAntiMiss(enabled)
-    if not IsGameActive("TugOfWar") then
+    if enabled and not IsGameActive("TugOfWar") then
         MainModule.ShowNotification("Anti Miss", "Game not active", 2)
+        MainModule.TugOfWar.AntiMissEnabled = false
         return
     end
     
@@ -984,7 +1027,23 @@ function MainModule.ToggleAntiMiss(enabled)
 
     if enabled then
         MainModule.TugOfWar.Connection = RunService.Heartbeat:Connect(function()
-            if not MainModule.TugOfWar.AntiMissEnabled then return end
+            if not MainModule.TugOfWar.AntiMissEnabled then 
+                if MainModule.TugOfWar.Connection then
+                    MainModule.TugOfWar.Connection:Disconnect()
+                    MainModule.TugOfWar.Connection = nil
+                end
+                return 
+            end
+            
+            if not IsGameActive("TugOfWar") then
+                MainModule.TugOfWar.AntiMissEnabled = false
+                if MainModule.TugOfWar.Connection then
+                    MainModule.TugOfWar.Connection:Disconnect()
+                    MainModule.TugOfWar.Connection = nil
+                end
+                MainModule.ShowNotification("Anti Miss", "Game ended - disabled", 2)
+                return
+            end
             
             local player = Players.LocalPlayer
             local gui = player:FindFirstChild("PlayerGui")
@@ -1034,8 +1093,9 @@ MainModule.GlassBridge = {
 }
 
 function MainModule.ToggleAntiBreak(enabled)
-    if not IsGameActive("GlassBridge") then
+    if enabled and not IsGameActive("GlassBridge") then
         MainModule.ShowNotification("Anti Break", "Game not active", 2)
+        MainModule.GlassBridge.AntiBreakEnabled = false
         return
     end
     
@@ -1055,7 +1115,23 @@ function MainModule.ToggleAntiBreak(enabled)
     
     if enabled then
         MainModule.GlassBridge.GlassAntiBreakConnection = RunService.Heartbeat:Connect(function()
-            if not MainModule.GlassBridge.AntiBreakEnabled then return end
+            if not MainModule.GlassBridge.AntiBreakEnabled then 
+                if MainModule.GlassBridge.GlassAntiBreakConnection then
+                    MainModule.GlassBridge.GlassAntiBreakConnection:Disconnect()
+                    MainModule.GlassBridge.GlassAntiBreakConnection = nil
+                end
+                return 
+            end
+            
+            if not IsGameActive("GlassBridge") then
+                MainModule.GlassBridge.AntiBreakEnabled = false
+                if MainModule.GlassBridge.GlassAntiBreakConnection then
+                    MainModule.GlassBridge.GlassAntiBreakConnection:Disconnect()
+                    MainModule.GlassBridge.GlassAntiBreakConnection = nil
+                end
+                MainModule.ShowNotification("Anti Break", "Game ended - disabled", 2)
+                return
+            end
             
             local GlassHolder = workspace:FindFirstChild("GlassBridge") and workspace.GlassBridge:FindFirstChild("GlassHolder")
             if not GlassHolder then return end
@@ -1071,16 +1147,14 @@ function MainModule.ToggleAntiBreak(enabled)
                             local platform = Instance.new("Part")
                             platform.Name = "GlassSafetyPlatform"
                             platform.Size = Vector3.new(20, 1, 20)
-                            platform.Position = glassModel.PrimaryPart.Position + Vector3.new(0, -6, 0)
+                            platform.Position = glassModel.PrimaryPart.Position + Vector3.new(0, -2, 0)
                             platform.Anchored = true
                             platform.CanCollide = true
-                            platform.Transparency = 0.3
+                            platform.Transparency = 1
                             platform.Color = Color3.fromRGB(255, 255, 255)
-                            platform.Material = Enum.Material.SmoothPlastic
-                            
-                            local corner = Instance.new("UICorner")
-                            corner.CornerRadius = UDim.new(0, 4)
-                            corner.Parent = platform
+                            platform.Material = Enum.Material.Plastic
+                            platform.CanQuery = false
+                            platform.CastShadow = false
                             
                             platform.Parent = workspace
                             MainModule.GlassBridge.SafetyPlatforms[glassModel] = platform
@@ -1100,7 +1174,17 @@ MainModule.GlassESP = {
     GlassESPConnections = {}
 }
 
-local function updateGlassESP()
+local function isRealGlass(part)
+    if part:GetAttribute("GlassPart") then
+        if part:GetAttribute("ActuallyKilling") ~= nil then
+            return false
+        end
+        return true
+    end
+    return false
+end
+
+local function updateGlassColors()
     if not workspace:FindFirstChild("GlassBridge") then return end
     
     local GlassHolder = workspace.GlassBridge:FindFirstChild("GlassHolder")
@@ -1108,36 +1192,23 @@ local function updateGlassESP()
     
     for _, lane in pairs(GlassHolder:GetChildren()) do
         for _, glassModel in pairs(lane:GetChildren()) do
-            if glassModel:IsA("Model") and glassModel.PrimaryPart then
-                if not glassModel:FindFirstChild("GlassESP") then
-                    local part = glassModel.PrimaryPart
-                    
-                    local highlight = Instance.new("Highlight")
-                    highlight.Name = "GlassESP"
-                    highlight.Adornee = part
-                    highlight.FillColor = Color3.fromRGB(0, 150, 255)
-                    highlight.FillTransparency = 0.7
-                    highlight.OutlineColor = Color3.fromRGB(0, 100, 200)
-                    highlight.OutlineTransparency = 0
-                    highlight.Parent = glassModel
-                    
-                    local billboard = Instance.new("BillboardGui")
-                    billboard.Name = "GlassESPBillboard"
-                    billboard.Size = UDim2.new(0, 100, 0, 40)
-                    billboard.StudsOffset = Vector3.new(0, 3, 0)
-                    billboard.AlwaysOnTop = true
-                    billboard.Adornee = part
-                    billboard.Parent = glassModel
-                    
-                    local textLabel = Instance.new("TextLabel")
-                    textLabel.Size = UDim2.new(1, 0, 1, 0)
-                    textLabel.BackgroundTransparency = 1
-                    textLabel.Text = "🪟 Glass"
-                    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    textLabel.TextStrokeTransparency = 0
-                    textLabel.Font = Enum.Font.SourceSansBold
-                    textLabel.TextScaled = true
-                    textLabel.Parent = billboard
+            if glassModel:IsA("Model") then
+                for _, part in pairs(glassModel:GetDescendants()) do
+                    if part:IsA("BasePart") and part:GetAttribute("GlassPart") then
+                        if MainModule.GlassESP.Enabled then
+                            if isRealGlass(part) then
+                                part.Color = Color3.fromRGB(0, 255, 0)
+                            else
+                                part.Color = Color3.fromRGB(255, 0, 0)
+                            end
+                            part.Material = Enum.Material.Neon
+                            part:SetAttribute("ExploitingIsEvil", true)
+                        else
+                            part.Color = Color3.fromRGB(163, 162, 165)
+                            part.Material = Enum.Material.Glass
+                            part:SetAttribute("ExploitingIsEvil", nil)
+                        end
+                    end
                 end
             end
         end
@@ -1151,11 +1222,13 @@ local function clearGlassESP()
             for _, lane in pairs(GlassHolder:GetChildren()) do
                 for _, glassModel in pairs(lane:GetChildren()) do
                     if glassModel:IsA("Model") then
-                        local esp = glassModel:FindFirstChild("GlassESP")
-                        if esp then esp:Destroy() end
-                        
-                        local billboard = glassModel:FindFirstChild("GlassESPBillboard")
-                        if billboard then billboard:Destroy() end
+                        for _, part in pairs(glassModel:GetDescendants()) do
+                            if part:IsA("BasePart") and part:GetAttribute("GlassPart") then
+                                part.Color = Color3.fromRGB(163, 162, 165)
+                                part.Material = Enum.Material.Glass
+                                part:SetAttribute("ExploitingIsEvil", nil)
+                            end
+                        end
                     end
                 end
             end
@@ -1164,43 +1237,56 @@ local function clearGlassESP()
 end
 
 function MainModule.ToggleGlassESP(enabled)
-    if not IsGameActive("GlassBridge") then
+    if enabled and not IsGameActive("GlassBridge") then
         MainModule.ShowNotification("Glass ESP", "Game not active", 2)
+        MainModule.GlassESP.Enabled = false
         return
     end
+    
+    for _, conn in pairs(MainModule.GlassESP.GlassESPConnections) do
+        if conn then
+            pcall(function() conn:Disconnect() end)
+        end
+    end
+    MainModule.GlassESP.GlassESPConnections = {}
     
     MainModule.GlassESP.Enabled = enabled
     
-    if MainModule.GlassESP.Enabled then
-        for _, conn in pairs(MainModule.GlassESP.GlassESPConnections) do
-            if conn then
-                pcall(function() conn:Disconnect() end)
-            end
-        end
-        MainModule.GlassESP.GlassESPConnections = {}
+    if enabled then
+        updateGlassColors()
         
+        local conn1 = workspace.ChildAdded:Connect(function(child)
+            if child.Name == "GlassBridge" then
+                task.wait(1)
+                updateGlassColors()
+            end
+        end)
+        table.insert(MainModule.GlassESP.GlassESPConnections, conn1)
+        
+        local conn2 = RunService.Heartbeat:Connect(function()
+            if not MainModule.GlassESP.Enabled then 
+                if conn2 then
+                    conn2:Disconnect()
+                end
+                return 
+            end
+            
+            if not IsGameActive("GlassBridge") then
+                MainModule.GlassESP.Enabled = false
+                MainModule.ShowNotification("Glass ESP", "Game ended - disabled", 2)
+                clearGlassESP()
+                return
+            end
+            
+            updateGlassColors()
+        end)
+        table.insert(MainModule.GlassESP.GlassESPConnections, conn2)
+        
+        MainModule.ShowNotification("Glass ESP", "Enabled", 2)
+    else
         clearGlassESP()
-        return
+        MainModule.ShowNotification("Glass ESP", "Disabled", 2)
     end
-    
-    updateGlassESP()
-    
-    local conn1 = workspace.ChildAdded:Connect(function(child)
-        if child.Name == "GlassBridge" then
-            task.wait(1)
-            updateGlassESP()
-        end
-    end)
-    table.insert(MainModule.GlassESP.GlassESPConnections, conn1)
-    
-    local conn2 = RunService.Heartbeat:Connect(function()
-        if MainModule.GlassESP.Enabled then
-            updateGlassESP()
-        end
-    end)
-    table.insert(MainModule.GlassESP.GlassESPConnections, conn2)
-    
-    MainModule.ShowNotification("Glass ESP", "Enabled", 2)
 end
 
 function MainModule.GlassBridge_TP_ToEnd()
@@ -1209,12 +1295,158 @@ function MainModule.GlassBridge_TP_ToEnd()
             MainModule.ShowNotification("Glass Bridge", "Game not active", 2)
             return
         end
-        local character = GetCharacter()
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            character.HumanoidRootPart.CFrame = CFrame.new(-196.372467, 522.192139, -1534.20984)
+        if SafeTeleport(Vector3.new(-196.372467, 522.192139, -1534.20984)) then
             MainModule.ShowNotification("Glass Bridge", "Teleported to End", 2)
         end
     end)
+end
+
+function MainModule.TeleportToJumpRopeStart()
+    task.spawn(function()
+        if not IsGameActive("JumpRope") then
+            MainModule.ShowNotification("Jump Rope", "Game not active", 2)
+            return
+        end
+        if SafeTeleport(Vector3.new(615.284424, 192.274277, 920.952515)) then
+            MainModule.ShowNotification("Jump Rope", "Teleported to Start", 2)
+        end
+    end)
+end
+
+function MainModule.TeleportToJumpRopeEnd()
+    task.spawn(function()
+        if not IsGameActive("JumpRope") then
+            MainModule.ShowNotification("Jump Rope", "Game not active", 2)
+            return
+        end
+        if SafeTeleport(Vector3.new(720.896057, 198.628311, 921.170654)) then
+            MainModule.ShowNotification("Jump Rope", "Teleported to End", 2)
+        end
+    end)
+end
+
+function MainModule.DeleteJumpRope()
+    task.spawn(function()
+        if not IsGameActive("JumpRope") then
+            MainModule.ShowNotification("Jump Rope", "Game not active", 2)
+            return
+        end
+        
+        local ropeFound = false
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj.Name == "Rope" then
+                if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart") then
+                    obj:Destroy()
+                    ropeFound = true
+                    break
+                end
+            end
+        end
+        if not ropeFound then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj.Name:lower():find("rope") and 
+                   (obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart")) then
+                    obj:Destroy()
+                    ropeFound = true
+                    break
+                end
+            end
+        end
+        if not ropeFound then
+            local effects = workspace:FindFirstChild("Effects")
+            if effects then
+                for _, obj in pairs(effects:GetDescendants()) do
+                    if obj.Name:lower():find("rope") and 
+                       (obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart")) then
+                        obj:Destroy()
+                        ropeFound = true
+                        break
+                    end
+                end
+            end
+        end
+        
+        if ropeFound then
+            MainModule.ShowNotification("Jump Rope", "Rope deleted", 2)
+        else
+            MainModule.ShowNotification("Jump Rope", "Rope not found", 2)
+        end
+    end)
+end
+
+MainModule.JumpRope = {
+    AntiFallEnabled = false,
+    AntiFallPlatform = nil,
+    Connection = nil
+}
+
+function MainModule.ToggleJumpRopeAntiFall(enabled)
+    if enabled and not IsGameActive("JumpRope") then
+        MainModule.ShowNotification("Jump Rope AntiFall", "Game not active", 2)
+        MainModule.JumpRope.AntiFallEnabled = false
+        return
+    end
+    
+    MainModule.JumpRope.AntiFallEnabled = enabled
+    
+    if MainModule.JumpRope.Connection then
+        MainModule.JumpRope.Connection:Disconnect()
+        MainModule.JumpRope.Connection = nil
+    end
+    
+    if MainModule.JumpRope.AntiFallPlatform then
+        MainModule.JumpRope.AntiFallPlatform:Destroy()
+        MainModule.JumpRope.AntiFallPlatform = nil
+    end
+    
+    if enabled then
+        MainModule.JumpRope.Connection = RunService.Heartbeat:Connect(function()
+            if not MainModule.JumpRope.AntiFallEnabled then 
+                if MainModule.JumpRope.Connection then
+                    MainModule.JumpRope.Connection:Disconnect()
+                    MainModule.JumpRope.Connection = nil
+                end
+                return 
+            end
+            
+            if not IsGameActive("JumpRope") then
+                MainModule.JumpRope.AntiFallEnabled = false
+                if MainModule.JumpRope.Connection then
+                    MainModule.JumpRope.Connection:Disconnect()
+                    MainModule.JumpRope.Connection = nil
+                end
+                MainModule.ShowNotification("Jump Rope AntiFall", "Game ended - disabled", 2)
+                return
+            end
+            
+            local character = GetCharacter()
+            if not character or not character.PrimaryPart then return end
+            
+            if not MainModule.JumpRope.AntiFallPlatform then
+                local platformPosition = character.PrimaryPart.Position + Vector3.new(0, -4, 0)
+                
+                MainModule.JumpRope.AntiFallPlatform = Instance.new("Part")
+                MainModule.JumpRope.AntiFallPlatform.Name = "JumpRopeAntiFallPlatform"
+                MainModule.JumpRope.AntiFallPlatform.Size = Vector3.new(500, 2, 500)
+                MainModule.JumpRope.AntiFallPlatform.Position = platformPosition
+                MainModule.JumpRope.AntiFallPlatform.Anchored = true
+                MainModule.JumpRope.AntiFallPlatform.CanCollide = true
+                MainModule.JumpRope.AntiFallPlatform.Transparency = 1
+                MainModule.JumpRope.AntiFallPlatform.Color = Color3.fromRGB(255, 255, 255)
+                MainModule.JumpRope.AntiFallPlatform.Material = Enum.Material.Plastic
+                MainModule.JumpRope.AntiFallPlatform.CanQuery = false
+                MainModule.JumpRope.AntiFallPlatform.CastShadow = false
+                
+                MainModule.JumpRope.AntiFallPlatform.Parent = workspace
+            else
+                local platformPosition = character.PrimaryPart.Position + Vector3.new(0, -4, 0)
+                MainModule.JumpRope.AntiFallPlatform.Position = platformPosition
+            end
+        end)
+        MainModule.ShowNotification("Jump Rope AntiFall", "Enabled", 2)
+    else
+        MainModule.ShowNotification("Jump Rope AntiFall", "Disabled", 2)
+    end
 end
 
 MainModule.MingleVoidKill = {
@@ -1444,8 +1676,9 @@ local function setupAnimationTrackerMingleVoidKill()
 end
 
 function MainModule.ToggleMingleVoidKill(enabled)
-    if not IsGameActive("Mingle") then
+    if enabled and not IsGameActive("Mingle") then
         MainModule.ShowNotification("Void Kill", "Game not active", 2)
+        MainModule.MingleVoidKill.Enabled = false
         return
     end
     
@@ -1472,10 +1705,510 @@ function MainModule.ToggleMingleVoidKill(enabled)
     if enabled then
         MainModule.MingleVoidKill.Enabled = true
         setupAnimationTrackerMingleVoidKill()
+        
+        local checkConnection = RunService.Heartbeat:Connect(function()
+            if MainModule.MingleVoidKill.Enabled and not IsGameActive("Mingle") then
+                MainModule.MingleVoidKill.Enabled = false
+                MainModule.ShowNotification("Void Kill", "Game ended - disabled", 2)
+                checkConnection:Disconnect()
+            end
+        end)
+        table.insert(MainModule.MingleVoidKill.Connections, checkConnection)
+        
         MainModule.ShowNotification("Void Kill", "Enabled", 2)
     else
         MainModule.ShowNotification("Void Kill", "Disabled", 2)
     end
+end
+
+MainModule.Rebel = {
+    Enabled = false,
+    Connection = nil,
+    LastCheckTime = 0,
+    LastKillTime = 0,
+    CheckCooldown = 0.1,
+    KillCooldown = 0.05
+}
+
+function MainModule.ToggleRebel(enabled)
+    MainModule.Rebel.Enabled = enabled
+    if MainModule.Rebel.Connection then
+        MainModule.Rebel.Connection:Disconnect()
+        MainModule.Rebel.Connection = nil
+    end
+    if enabled then
+        MainModule.Rebel.Connection = RunService.Heartbeat:Connect(function()
+            if not MainModule.Rebel.Enabled then return end
+            local currentTime = tick()
+            if currentTime - MainModule.Rebel.LastCheckTime < MainModule.Rebel.CheckCooldown then return end
+            MainModule.Rebel.LastCheckTime = currentTime
+            local enemies = GetEnemies()
+            if #enemies == 0 then return end
+            for _, enemyName in pairs(enemies) do
+                if currentTime - MainModule.Rebel.LastKillTime < MainModule.Rebel.KillCooldown then
+                    task.wait(MainModule.Rebel.KillCooldown)
+                end
+                KillEnemy(enemyName)
+                MainModule.Rebel.LastKillTime = tick()
+                task.wait(0.05)
+            end
+        end)
+        MainModule.ShowNotification("Rebel", "Instant Rebel Enabled", 2)
+    else
+        MainModule.Rebel.LastKillTime = 0
+        MainModule.Rebel.LastCheckTime = 0
+        MainModule.ShowNotification("Rebel", "Instant Rebel Disabled", 2)
+    end
+end
+
+MainModule.ZoneKillFeature = {
+    Enabled = false,
+    AnimationId = "rbxassetid://105341857343164",
+    ZonePosition = Vector3.new(197.7, 54.6, -96.3),
+    ReturnDelay = 0.6,
+    SavedCFrame = nil,
+    ActiveAnimation = false,
+    AnimationStartTime = 0,
+    AnimationConnection = nil,
+    CharacterAddedConnection = nil,
+    AnimationStoppedConnections = {},
+    AnimationCheckConnection = nil,
+    TrackedAnimations = {}
+}
+
+function MainModule.ToggleZoneKill(enabled)
+    MainModule.ZoneKillFeature.Enabled = enabled
+    
+    if MainModule.ZoneKillFeature.AnimationConnection then
+        MainModule.ZoneKillFeature.AnimationConnection:Disconnect()
+        MainModule.ZoneKillFeature.AnimationConnection = nil
+    end
+    if MainModule.ZoneKillFeature.CharacterAddedConnection then
+        MainModule.ZoneKillFeature.CharacterAddedConnection:Disconnect()
+        MainModule.ZoneKillFeature.CharacterAddedConnection = nil
+    end
+    if MainModule.ZoneKillFeature.AnimationCheckConnection then
+        MainModule.ZoneKillFeature.AnimationCheckConnection:Disconnect()
+        MainModule.ZoneKillFeature.AnimationCheckConnection = nil
+    end
+    
+    for _, conn in ipairs(MainModule.ZoneKillFeature.AnimationStoppedConnections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    MainModule.ZoneKillFeature.AnimationStoppedConnections = {}
+    
+    MainModule.ZoneKillFeature.SavedCFrame = nil
+    MainModule.ZoneKillFeature.ActiveAnimation = false
+    MainModule.ZoneKillFeature.AnimationStartTime = 0
+    MainModule.ZoneKillFeature.TrackedAnimations = {}
+    
+    if not enabled then
+        return
+    end
+    
+    local function checkAnimations()
+        if not MainModule.ZoneKillFeature.Enabled then return end
+        
+        local character = GetCharacter()
+        if not character then return end
+        local humanoid = GetHumanoid(character)
+        if not humanoid then return end
+        
+        local activeTracks = humanoid:GetPlayingAnimationTracks()
+        for _, track in pairs(activeTracks) do
+            if track and track.Animation then
+                local success, animId = pcall(function()
+                    return track.Animation.AnimationId
+                end)
+                
+                if success and animId and animId == MainModule.ZoneKillFeature.AnimationId then
+                    if not MainModule.ZoneKillFeature.TrackedAnimations[track] then
+                        MainModule.ZoneKillFeature.TrackedAnimations[track] = true
+                        
+                        if not MainModule.ZoneKillFeature.ActiveAnimation then
+                            MainModule.ZoneKillFeature.ActiveAnimation = true
+                            MainModule.ZoneKillFeature.AnimationStartTime = tick()
+                            
+                            local primaryPart = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
+                            if primaryPart then
+                                MainModule.ZoneKillFeature.SavedCFrame = primaryPart.CFrame
+                                character:SetPrimaryPartCFrame(CFrame.new(MainModule.ZoneKillFeature.ZonePosition))
+                            end
+                            
+                            local stoppedConn = track.Stopped:Connect(function()
+                                task.wait(MainModule.ZoneKillFeature.ReturnDelay)
+                                
+                                if MainModule.ZoneKillFeature.SavedCFrame then
+                                    character:SetPrimaryPartCFrame(MainModule.ZoneKillFeature.SavedCFrame)
+                                    MainModule.ZoneKillFeature.SavedCFrame = nil
+                                    MainModule.ZoneKillFeature.ActiveAnimation = false
+                                    MainModule.ZoneKillFeature.TrackedAnimations = {}
+                                end
+                            end)
+                            table.insert(MainModule.ZoneKillFeature.AnimationStoppedConnections, stoppedConn)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    local function setupCharacter(char)
+        local humanoid = char:WaitForChild("Humanoid", 5)
+        if not humanoid then return end
+        
+        MainModule.ZoneKillFeature.AnimationConnection = humanoid.AnimationPlayed:Connect(function(track)
+            if not MainModule.ZoneKillFeature.Enabled then return end
+            
+            if track and track.Animation then
+                local success, animId = pcall(function()
+                    return track.Animation.AnimationId
+                end)
+                
+                if success and animId and animId == MainModule.ZoneKillFeature.AnimationId then
+                    MainModule.ZoneKillFeature.TrackedAnimations[track] = true
+                    
+                    if not MainModule.ZoneKillFeature.ActiveAnimation then
+                        MainModule.ZoneKillFeature.ActiveAnimation = true
+                        MainModule.ZoneKillFeature.AnimationStartTime = tick()
+                        
+                        local primaryPart = char.PrimaryPart or char:FindFirstChild("HumanoidRootPart")
+                        if primaryPart then
+                            MainModule.ZoneKillFeature.SavedCFrame = primaryPart.CFrame
+                            char:SetPrimaryPartCFrame(CFrame.new(MainModule.ZoneKillFeature.ZonePosition))
+                        end
+                        
+                        local stoppedConn = track.Stopped:Connect(function()
+                            task.wait(MainModule.ZoneKillFeature.ReturnDelay)
+                            
+                            if MainModule.ZoneKillFeature.SavedCFrame then
+                                char:SetPrimaryPartCFrame(MainModule.ZoneKillFeature.SavedCFrame)
+                                MainModule.ZoneKillFeature.SavedCFrame = nil
+                                MainModule.ZoneKillFeature.ActiveAnimation = false
+                                MainModule.ZoneKillFeature.TrackedAnimations = {}
+                            end
+                        end)
+                        table.insert(MainModule.ZoneKillFeature.AnimationStoppedConnections, stoppedConn)
+                    end
+                end
+            end
+        end)
+    end
+    
+    local char = LocalPlayer.Character
+    if char then
+        setupCharacter(char)
+    end
+    
+    MainModule.ZoneKillFeature.CharacterAddedConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
+        task.wait(1)
+        setupCharacter(newChar)
+    end)
+    
+    MainModule.ZoneKillFeature.AnimationCheckConnection = RunService.Heartbeat:Connect(function()
+        if not MainModule.ZoneKillFeature.Enabled then return end
+        checkAnimations()
+    end)
+    
+    MainModule.ShowNotification("Last Dinner", "Zone Kill Enabled", 2)
+end
+
+MainModule.SkySquidGame = {
+    AntiFallEnabled = false,
+    AntiFallPlatform = nil,
+    Connection = nil
+}
+
+function MainModule.ToggleSkySquidGameAntiFall(enabled)
+    if enabled and not IsGameActive("SkySquidGame") then
+        MainModule.ShowNotification("Sky Squid Game AntiFall", "Game not active", 2)
+        MainModule.SkySquidGame.AntiFallEnabled = false
+        return
+    end
+    
+    MainModule.SkySquidGame.AntiFallEnabled = enabled
+    
+    if MainModule.SkySquidGame.Connection then
+        MainModule.SkySquidGame.Connection:Disconnect()
+        MainModule.SkySquidGame.Connection = nil
+    end
+    
+    if MainModule.SkySquidGame.AntiFallPlatform then
+        MainModule.SkySquidGame.AntiFallPlatform:Destroy()
+        MainModule.SkySquidGame.AntiFallPlatform = nil
+    end
+    
+    if enabled then
+        MainModule.SkySquidGame.Connection = RunService.Heartbeat:Connect(function()
+            if not MainModule.SkySquidGame.AntiFallEnabled then 
+                if MainModule.SkySquidGame.Connection then
+                    MainModule.SkySquidGame.Connection:Disconnect()
+                    MainModule.SkySquidGame.Connection = nil
+                end
+                return 
+            end
+            
+            if not IsGameActive("SkySquidGame") then
+                MainModule.SkySquidGame.AntiFallEnabled = false
+                if MainModule.SkySquidGame.Connection then
+                    MainModule.SkySquidGame.Connection:Disconnect()
+                    MainModule.SkySquidGame.Connection = nil
+                end
+                MainModule.ShowNotification("Sky Squid Game AntiFall", "Game ended - disabled", 2)
+                return
+            end
+            
+            local character = GetCharacter()
+            if not character or not character.PrimaryPart then return end
+            
+            if not MainModule.SkySquidGame.AntiFallPlatform then
+                local platformPosition = character.PrimaryPart.Position + Vector3.new(0, -4, 0)
+                
+                MainModule.SkySquidGame.AntiFallPlatform = Instance.new("Part")
+                MainModule.SkySquidGame.AntiFallPlatform.Name = "SkySquidGameAntiFallPlatform"
+                MainModule.SkySquidGame.AntiFallPlatform.Size = Vector3.new(1000, 2, 1000)
+                MainModule.SkySquidGame.AntiFallPlatform.Position = platformPosition
+                MainModule.SkySquidGame.AntiFallPlatform.Anchored = true
+                MainModule.SkySquidGame.AntiFallPlatform.CanCollide = true
+                MainModule.SkySquidGame.AntiFallPlatform.Transparency = 1
+                MainModule.SkySquidGame.AntiFallPlatform.Color = Color3.fromRGB(255, 255, 255)
+                MainModule.SkySquidGame.AntiFallPlatform.Material = Enum.Material.Plastic
+                MainModule.SkySquidGame.AntiFallPlatform.CanQuery = false
+                MainModule.SkySquidGame.AntiFallPlatform.CastShadow = false
+                
+                MainModule.SkySquidGame.AntiFallPlatform.Parent = workspace
+            else
+                local platformPosition = character.PrimaryPart.Position + Vector3.new(0, -4, 0)
+                MainModule.SkySquidGame.AntiFallPlatform.Position = platformPosition
+            end
+        end)
+        MainModule.ShowNotification("Sky Squid Game AntiFall", "Enabled", 2)
+    else
+        MainModule.ShowNotification("Sky Squid Game AntiFall", "Disabled", 2)
+    end
+end
+
+MainModule.VoidKillFeature = {
+    Enabled = false,
+    AnimationIds = {
+        "rbxassetid://107989020363293",
+        "rbxassetid://71619354165195"
+    },
+    ZonePosition = Vector3.new(-95.1, 964.6, 67.6),
+    PlatformYOffset = -4,
+    PlatformSize = Vector3.new(10, 1, 10),
+    ReturnDelay = 1,
+    SavedCFrame = nil,
+    ActiveAnimation = false,
+    AnimationStartTime = 0,
+    AnimationConnection = nil,
+    CharacterAddedConnection = nil,
+    AnimationStoppedConnections = {},
+    AnimationCheckConnection = nil,
+    TrackedAnimations = {},
+    AntiFallEnabled = false,
+    AntiFallPlatform = nil,
+    AnimationIdsSet = {}
+}
+
+for _, id in ipairs(MainModule.VoidKillFeature.AnimationIds) do
+    MainModule.VoidKillFeature.AnimationIdsSet[id] = true
+end
+
+function MainModule.ToggleVoidKill(enabled)
+    if enabled and not IsGameActive("SkySquidGame") then
+        MainModule.ShowNotification("Void Kill", "Game not active", 2)
+        MainModule.VoidKillFeature.Enabled = false
+        return
+    end
+    
+    MainModule.VoidKillFeature.Enabled = enabled
+    
+    if MainModule.VoidKillFeature.AnimationConnection then
+        MainModule.VoidKillFeature.AnimationConnection:Disconnect()
+        MainModule.VoidKillFeature.AnimationConnection = nil
+    end
+    if MainModule.VoidKillFeature.CharacterAddedConnection then
+        MainModule.VoidKillFeature.CharacterAddedConnection:Disconnect()
+        MainModule.VoidKillFeature.CharacterAddedConnection = nil
+    end
+    if MainModule.VoidKillFeature.AnimationCheckConnection then
+        MainModule.VoidKillFeature.AnimationCheckConnection:Disconnect()
+        MainModule.VoidKillFeature.AnimationCheckConnection = nil
+    end
+    
+    for _, conn in ipairs(MainModule.VoidKillFeature.AnimationStoppedConnections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    MainModule.VoidKillFeature.AnimationStoppedConnections = {}
+    
+    MainModule.VoidKillFeature.SavedCFrame = nil
+    MainModule.VoidKillFeature.ActiveAnimation = false
+    MainModule.VoidKillFeature.AnimationStartTime = 0
+    MainModule.VoidKillFeature.TrackedAnimations = {}
+    
+    if not enabled then
+        if MainModule.VoidKillFeature.AntiFallPlatform then
+            MainModule.VoidKillFeature.AntiFallPlatform:Destroy()
+            MainModule.VoidKillFeature.AntiFallPlatform = nil
+        end
+        MainModule.VoidKillFeature.AntiFallEnabled = false
+        MainModule.ShowNotification("Void Kill", "Disabled", 2)
+        return
+    end
+    
+    local function checkAnimations()
+        if not MainModule.VoidKillFeature.Enabled then return end
+        
+        local character = GetCharacter()
+        if not character then return end
+        local humanoid = GetHumanoid(character)
+        if not humanoid then return end
+        
+        local activeTracks = humanoid:GetPlayingAnimationTracks()
+        for _, track in pairs(activeTracks) do
+            if track and track.Animation then
+                local animId = track.Animation.AnimationId
+                
+                if MainModule.VoidKillFeature.AnimationIdsSet[animId] then
+                    local trackKey = animId .. "_" .. tostring(track)
+                    if not MainModule.VoidKillFeature.TrackedAnimations[trackKey] then
+                        MainModule.VoidKillFeature.TrackedAnimations[trackKey] = true
+                        
+                        if not MainModule.VoidKillFeature.ActiveAnimation then
+                            MainModule.VoidKillFeature.ActiveAnimation = true
+                            MainModule.VoidKillFeature.AnimationStartTime = tick()
+                            
+                            MainModule.VoidKillFeature.SavedCFrame = character:GetPrimaryPartCFrame()
+                            
+                            local platformPosition = MainModule.VoidKillFeature.ZonePosition + 
+                                                    Vector3.new(0, MainModule.VoidKillFeature.PlatformYOffset, 0)
+                            
+                            MainModule.VoidKillFeature.AntiFallPlatform = Instance.new("Part")
+                            MainModule.VoidKillFeature.AntiFallPlatform.Name = "VoidKillAntiFall"
+                            MainModule.VoidKillFeature.AntiFallPlatform.Size = MainModule.VoidKillFeature.PlatformSize
+                            MainModule.VoidKillFeature.AntiFallPlatform.Anchored = true
+                            MainModule.VoidKillFeature.AntiFallPlatform.CanCollide = true
+                            MainModule.VoidKillFeature.AntiFallPlatform.Transparency = 1
+                            MainModule.VoidKillFeature.AntiFallPlatform.Material = Enum.Material.Plastic
+                            MainModule.VoidKillFeature.AntiFallPlatform.CastShadow = false
+                            MainModule.VoidKillFeature.AntiFallPlatform.CanQuery = false
+                            MainModule.VoidKillFeature.AntiFallPlatform.Position = platformPosition
+                            MainModule.VoidKillFeature.AntiFallPlatform.Parent = workspace
+                            
+                            character:SetPrimaryPartCFrame(CFrame.new(MainModule.VoidKillFeature.ZonePosition))
+                            
+                            local stoppedConn = track.Stopped:Connect(function()
+                                task.wait(MainModule.VoidKillFeature.ReturnDelay)
+                                
+                                if MainModule.VoidKillFeature.SavedCFrame then
+                                    character:SetPrimaryPartCFrame(MainModule.VoidKillFeature.SavedCFrame)
+                                    MainModule.VoidKillFeature.SavedCFrame = nil
+                                end
+                                
+                                MainModule.VoidKillFeature.ActiveAnimation = false
+                                MainModule.VoidKillFeature.TrackedAnimations = {}
+                                
+                                if MainModule.VoidKillFeature.AntiFallPlatform then
+                                    MainModule.VoidKillFeature.AntiFallPlatform:Destroy()
+                                    MainModule.VoidKillFeature.AntiFallPlatform = nil
+                                end
+                            end)
+                            
+                            table.insert(MainModule.VoidKillFeature.AnimationStoppedConnections, stoppedConn)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    local function setupCharacter(char)
+        local humanoid = char:WaitForChild("Humanoid", 5)
+        if not humanoid then return end
+        
+        MainModule.VoidKillFeature.AnimationConnection = humanoid.AnimationPlayed:Connect(function(track)
+            if not MainModule.VoidKillFeature.Enabled then return end
+            
+            if track and track.Animation then
+                local animId = track.Animation.AnimationId
+                
+                if MainModule.VoidKillFeature.AnimationIdsSet[animId] then
+                    local trackKey = animId .. "_" .. tostring(track)
+                    MainModule.VoidKillFeature.TrackedAnimations[trackKey] = true
+                    
+                    if not MainModule.VoidKillFeature.ActiveAnimation then
+                        MainModule.VoidKillFeature.ActiveAnimation = true
+                        MainModule.VoidKillFeature.AnimationStartTime = tick()
+                        
+                        MainModule.VoidKillFeature.SavedCFrame = char:GetPrimaryPartCFrame()
+                        
+                        local platformPosition = MainModule.VoidKillFeature.ZonePosition + 
+                                                Vector3.new(0, MainModule.VoidKillFeature.PlatformYOffset, 0)
+                        
+                        MainModule.VoidKillFeature.AntiFallPlatform = Instance.new("Part")
+                        MainModule.VoidKillFeature.AntiFallPlatform.Name = "VoidKillAntiFall"
+                        MainModule.VoidKillFeature.AntiFallPlatform.Size = MainModule.VoidKillFeature.PlatformSize
+                        MainModule.VoidKillFeature.AntiFallPlatform.Anchored = true
+                        MainModule.VoidKillFeature.AntiFallPlatform.CanCollide = true
+                        MainModule.VoidKillFeature.AntiFallPlatform.Transparency = 1
+                        MainModule.VoidKillFeature.AntiFallPlatform.Material = Enum.Material.Plastic
+                        MainModule.VoidKillFeature.AntiFallPlatform.CastShadow = false
+                        MainModule.VoidKillFeature.AntiFallPlatform.CanQuery = false
+                        MainModule.VoidKillFeature.AntiFallPlatform.Position = platformPosition
+                        MainModule.VoidKillFeature.AntiFallPlatform.Parent = workspace
+                        
+                        char:SetPrimaryPartCFrame(CFrame.new(MainModule.VoidKillFeature.ZonePosition))
+                        
+                        local stoppedConn = track.Stopped:Connect(function()
+                            task.wait(MainModule.VoidKillFeature.ReturnDelay)
+                            
+                            if MainModule.VoidKillFeature.SavedCFrame then
+                                char:SetPrimaryPartCFrame(MainModule.VoidKillFeature.SavedCFrame)
+                                MainModule.VoidKillFeature.SavedCFrame = nil
+                            end
+                            
+                            MainModule.VoidKillFeature.ActiveAnimation = false
+                            MainModule.VoidKillFeature.TrackedAnimations = {}
+                            
+                            if MainModule.VoidKillFeature.AntiFallPlatform then
+                                MainModule.VoidKillFeature.AntiFallPlatform:Destroy()
+                                MainModule.VoidKillFeature.AntiFallPlatform = nil
+                            end
+                        end)
+                        
+                        table.insert(MainModule.VoidKillFeature.AnimationStoppedConnections, stoppedConn)
+                    end
+                end
+            end
+        end)
+    end
+    
+    local char = LocalPlayer.Character
+    if char then
+        task.spawn(setupCharacter, char)
+    end
+    
+    MainModule.VoidKillFeature.CharacterAddedConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
+        task.wait(1)
+        if MainModule.VoidKillFeature.Enabled then
+            task.spawn(setupCharacter, newChar)
+        end
+    end)
+    
+    MainModule.VoidKillFeature.AnimationCheckConnection = RunService.Heartbeat:Connect(function()
+        if not MainModule.VoidKillFeature.Enabled then return end
+        
+        if not IsGameActive("SkySquidGame") then
+            MainModule.VoidKillFeature.Enabled = false
+            MainModule.ShowNotification("Void Kill", "Game ended - disabled", 2)
+            return
+        end
+        
+        checkAnimations()
+    end)
+    
+    MainModule.ShowNotification("Void Kill", "Enabled", 2)
 end
 
 return MainModule
