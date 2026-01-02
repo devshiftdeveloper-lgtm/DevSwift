@@ -4,16 +4,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 local Debris = game:GetService("Debris")
 local CollectionService = game:GetService("CollectionService")
 
 local LocalPlayer = Players.LocalPlayer
-local Character
-
-if LocalPlayer.Character then
-    Character = LocalPlayer.Character
-end
-
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     Character = newChar
 end)
@@ -198,38 +194,9 @@ local function KillEnemy(enemyName)
     end)
 end
 
-function MainModule.RLGL_TP_ToStart()
-    if Character and Character:FindFirstChild("HumanoidRootPart") then
-        Character.HumanoidRootPart.CFrame = CFrame.new(-55.3, 1023.1, -545.8)
-    end
-end
-
-function MainModule.RLGL_TP_ToEnd()
-    if Character and Character:FindFirstChild("HumanoidRootPart") then
-        Character.HumanoidRootPart.CFrame = CFrame.new(-214.4, 1023.1, 146.7)
-    end
-end
-
-function MainModule.Dalgona_Complete()
-    task.spawn(function()
-        for _, func in pairs(debug.getregistry()) do
-            if typeof(func) == "function" then
-                local info = debug.getinfo(func)
-                if info.nups == 76 then
-                    debug.setupvalue(func, 33, 9999)
-                    debug.setupvalue(func, 34, 9999)
-                    break
-                end
-            end
-        end
-    end)
-end
-
-function MainModule.Dalgona_FreeLighter()
-    LocalPlayer:SetAttribute("HasLighter", true)
-end
-
 local function sendGameAction(guid, action, data)
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    
     local remote = ReplicatedStorage:FindFirstChild("Remote")
     if not remote then
         remote = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("Pentathlon")
@@ -240,14 +207,17 @@ local function sendGameAction(guid, action, data)
     if not remote then
         remote = ReplicatedStorage:FindFirstChild("Events"):FindFirstChild("Pentathlon")
     end
+    
     if remote and remote:IsA("RemoteEvent") then
         remote:FireServer(guid, action, data)
         return true
     end
+    
     return false
 end
 
 local function getActiveGameId(minigameName)
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local success, pentathlonModule = pcall(function()
         local modules = ReplicatedStorage:FindFirstChild("Modules")
         if modules then
@@ -267,18 +237,57 @@ local function getActiveGameId(minigameName)
         end
     end
     
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    
     if playerGui then
         local ui = playerGui:FindFirstChild(minigameName)
         if not ui and playerGui:FindFirstChild("OtherUIHolder") then
             ui = playerGui.OtherUIHolder:FindFirstChild(minigameName)
         end
+        
         if ui and ui.Visible then
             return minigameName .. "_" .. math.floor(tick())
         end
     end
     
     return nil
+end
+
+function MainModule.RLGL_TP_ToStart()
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        Character.HumanoidRootPart.CFrame = CFrame.new(-55.3, 1023.1, -545.8)
+    end
+end
+
+function MainModule.RLGL_TP_ToEnd()
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        Character.HumanoidRootPart.CFrame = CFrame.new(-214.4, 1023.1, 146.7)
+    end
+end
+
+function MainModule.Dalgona_Complete()
+    task.spawn(function()
+        local DalgonaClientModule = ReplicatedStorage:FindFirstChild("Modules") and
+                                    ReplicatedStorage.Modules:FindFirstChild("Games") and
+                                    ReplicatedStorage.Modules.Games:FindFirstChild("DalgonaClient")
+        if not DalgonaClientModule then return end
+        
+        for _, func in pairs(debug.getregistry()) do
+            if typeof(func) == "function" and islclosure(func) then
+                local info = debug.getinfo(func)
+                if info.nups == 76 then
+                    debug.setupvalue(func, 33, 9999)
+                    debug.setupvalue(func, 34, 9999)
+                end
+            end
+        end
+    end)
+end
+
+function MainModule.Dalgona_FreeLighter()
+    LocalPlayer:SetAttribute("HasLighter", true)
 end
 
 MainModule.AutoGonggi = {
@@ -293,48 +302,64 @@ MainModule.AutoGonggi = {
 }
 
 local function getGonggiUI()
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    local player = game:GetService("Players").LocalPlayer
+    if not player then return nil end
+    
+    local playerGui = player:FindFirstChild("PlayerGui")
     if not playerGui then return nil end
+    
     local ui = playerGui:FindFirstChild("Gonggi")
     if not ui and playerGui:FindFirstChild("OtherUIHolder") then
         ui = playerGui.OtherUIHolder:FindFirstChild("Gonggi")
     end
+    
     return ui
 end
 
 local function processGonggiQTE()
     if MainModule.AutoGonggi.IsProcessingQTE then return end
+    
     MainModule.AutoGonggi.IsProcessingQTE = true
+    
     local ui = getGonggiUI()
     if not ui then 
         MainModule.AutoGonggi.IsProcessingQTE = false
         return 
     end
+    
     local qteScreen = ui:FindFirstChild("QTEScreen")
     if not qteScreen or not qteScreen.Visible then
         MainModule.AutoGonggi.LastProcessedImage = nil
         MainModule.AutoGonggi.IsProcessingQTE = false
         return
     end
+    
     local container = qteScreen:FindFirstChild("MainBar")
     container = container and container:FindFirstChild("ButtonContents")
     container = container and container:FindFirstChild("Inner")
+    
     local mobileButtons = ui:FindFirstChild("MobileButtons")
+    
     if not container or not mobileButtons then
         MainModule.AutoGonggi.LastProcessedImage = nil
         MainModule.AutoGonggi.IsProcessingQTE = false
         return
     end
+    
     local foundActive = false
+    
     for _, img in pairs(container:GetChildren()) do
         if img:IsA("ImageLabel") and img.ImageTransparency < 0.1 then
             foundActive = true
+            
             if img ~= MainModule.AutoGonggi.LastProcessedImage then
                 MainModule.AutoGonggi.LastProcessedImage = img
+                
                 local inputType = img:GetAttribute("InputType")
                 if inputType then
                     local btnName = tostring(inputType)
                     local btn = mobileButtons:FindFirstChild(btnName)
+                    
                     if btn then
                         if getconnections then
                             for _, conn in pairs(getconnections(btn.MouseButton1Click)) do
@@ -345,6 +370,7 @@ local function processGonggiQTE()
                         else
                             btn:Fire("MouseButton1Click")
                         end
+                        
                         task.wait(0.1)
                     end
                 end
@@ -352,31 +378,38 @@ local function processGonggiQTE()
             break
         end
     end
+    
     if not foundActive then
         MainModule.AutoGonggi.LastProcessedImage = nil
     end
+    
     MainModule.AutoGonggi.IsProcessingQTE = false
 end
 
 local function processGonggiStones()
     if MainModule.AutoGonggi.ProcessingStones then return end
     MainModule.AutoGonggi.ProcessingStones = true
+    
     local pentathlonMap = workspace:FindFirstChild("PentathlonMap")
     if not pentathlonMap then 
         MainModule.AutoGonggi.ProcessingStones = false
         return 
     end
+    
     local stoneNames = {"Stone1", "Stone2", "Stone3", "Stone4", "Stone5", 
                        "GonggiStone1", "GonggiStone2", "GonggiStone3", "GonggiStone4", "GonggiStone5"}
+    
     for _, stoneName in ipairs(stoneNames) do
         local stone = pentathlonMap:FindFirstChild(stoneName, true)
         if stone and stone:IsA("BasePart") then
             if not stone.Anchored then
                 stone.Anchored = true
             end
+            
             if stone.CanCollide then
                 stone.CanCollide = false
             end
+            
             if not stone:FindFirstChild("AutoHighlight") then
                 local highlight = Instance.new("Highlight")
                 highlight.Name = "AutoHighlight"
@@ -387,15 +420,19 @@ local function processGonggiStones()
             end
         end
     end
+    
     local stones = CollectionService:GetTagged("GonggiStone")
+    
     for _, stone in ipairs(stones) do
         if stone:IsA("BasePart") then
             if not stone.Anchored then
                 stone.Anchored = true
             end
+            
             if stone.CanCollide then
                 stone.CanCollide = false
             end
+            
             if not stone:FindFirstChild("AutoHighlight") then
                 local highlight = Instance.new("Highlight")
                 highlight.Name = "AutoHighlight"
@@ -406,6 +443,7 @@ local function processGonggiStones()
             end
         end
     end
+    
     MainModule.AutoGonggi.ProcessingStones = false
 end
 
@@ -413,18 +451,23 @@ function MainModule.ToggleAutoGonggi(enabled)
     if MainModule.AutoGonggi.Enabled == enabled then
         return MainModule.AutoGonggi.Enabled
     end
+    
     if MainModule.AutoGonggi.QTEThread then
         task.cancel(MainModule.AutoGonggi.QTEThread)
         MainModule.AutoGonggi.QTEThread = nil
     end
+    
     if MainModule.AutoGonggi.StoneThread then
         task.cancel(MainModule.AutoGonggi.StoneThread)
         MainModule.AutoGonggi.StoneThread = nil
     end
+    
     MainModule.AutoGonggi.LastProcessedImage = nil
     MainModule.AutoGonggi.IsProcessingQTE = false
     MainModule.AutoGonggi.ProcessingStones = false
+    
     MainModule.AutoGonggi.Enabled = enabled
+    
     if enabled then
         MainModule.AutoGonggi.QTEThread = task.spawn(function()
             while MainModule.AutoGonggi.Enabled do
@@ -432,6 +475,7 @@ function MainModule.ToggleAutoGonggi(enabled)
                 task.wait(MainModule.AutoGonggi.CheckInterval)
             end
         end)
+        
         MainModule.AutoGonggi.StoneThread = task.spawn(function()
             while MainModule.AutoGonggi.Enabled do
                 processGonggiStones()
@@ -448,6 +492,7 @@ function MainModule.ToggleAutoGonggi(enabled)
                     end
                 end
             end
+            
             local stones = CollectionService:GetTagged("GonggiStone")
             for _, stone in ipairs(stones) do
                 if stone:IsA("BasePart") and stone:FindFirstChild("AutoHighlight") then
@@ -456,6 +501,7 @@ function MainModule.ToggleAutoGonggi(enabled)
             end
         end)
     end
+    
     return MainModule.AutoGonggi.Enabled
 end
 
@@ -466,6 +512,7 @@ end
 function MainModule.CheckKnifeInInventory()
     local character = GetCharacter()
     if not character then return false end
+    
     for _, tool in pairs(character:GetChildren()) do
         if tool:IsA("Tool") then
             local toolName = tool.Name:lower()
@@ -474,6 +521,7 @@ function MainModule.CheckKnifeInInventory()
             end
         end
     end
+    
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if backpack then
         for _, tool in pairs(backpack:GetChildren()) do
@@ -485,6 +533,7 @@ function MainModule.CheckKnifeInInventory()
             end
         end
     end
+    
     return false, nil
 end
 
@@ -513,16 +562,90 @@ MainModule.SpikesKillFeature = {
     NoKnifeTimeout = 2
 }
 
+local function ShowNotification(title, message, duration)
+    local CoreGui = game:GetService("CoreGui")
+    if CoreGui:FindFirstChild("DevShiftNotifications") then
+        SafeDestroy(CoreGui:FindFirstChild("DevShiftNotifications"))
+    end
+    
+    local notifications = Instance.new("ScreenGui")
+    notifications.Name = "DevShiftNotifications"
+    notifications.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    notifications.Parent = CoreGui
+    
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(0, 300, 0, 80)
+    container.Position = UDim2.new(0, 20, 0, 20)
+    container.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    container.BackgroundTransparency = 0.2
+    container.BorderSizePixel = 0
+    container.Parent = notifications
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = container
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(60, 60, 60)
+    stroke.Thickness = 2
+    stroke.Parent = container
+    
+    local glow = Instance.new("ImageLabel")
+    glow.Size = UDim2.new(1, 12, 1, 12)
+    glow.Position = UDim2.new(0, -6, 0, -6)
+    glow.BackgroundTransparency = 1
+    glow.Image = "rbxassetid://5554236805"
+    glow.ImageColor3 = Color3.fromRGB(30, 30, 30)
+    glow.ImageTransparency = 0.5
+    glow.ScaleType = Enum.ScaleType.Slice
+    glow.SliceCenter = Rect.new(23, 23, 277, 277)
+    glow.Parent = container
+    
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -20, 0, 25)
+    titleLabel.Position = UDim2.new(0, 10, 0, 10)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    titleLabel.TextSize = 16
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = container
+    
+    local messageLabel = Instance.new("TextLabel")
+    messageLabel.Size = UDim2.new(1, -20, 1, -45)
+    messageLabel.Position = UDim2.new(0, 10, 0, 35)
+    messageLabel.BackgroundTransparency = 1
+    messageLabel.Text = message
+    messageLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+    messageLabel.TextSize = 14
+    messageLabel.Font = Enum.Font.Gotham
+    messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+    messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+    messageLabel.TextWrapped = true
+    messageLabel.Parent = container
+    
+    task.spawn(function()
+        for i = 1, duration do
+            task.wait(1)
+        end
+        SafeDestroy(notifications)
+    end)
+end
+
 function MainModule.ToggleSpikesKill(enabled)
     if enabled then
         local hasKnife = MainModule.CheckKnifeInInventory()
         if not hasKnife then
+            ShowNotification("Spikes Kill", "Knife not found!", 3)
             MainModule.SpikesKillFeature.Enabled = false
             return
         end
         MainModule.SpikesKillFeature.HasKnife = true
     end
+    
     MainModule.SpikesKillFeature.Enabled = enabled
+    
     if MainModule.SpikesKillFeature.AnimationConnection then
         MainModule.SpikesKillFeature.AnimationConnection:Disconnect()
         MainModule.SpikesKillFeature.AnimationConnection = nil
@@ -543,24 +666,30 @@ function MainModule.ToggleSpikesKill(enabled)
         MainModule.SpikesKillFeature.KnifeCheckConnection:Disconnect()
         MainModule.SpikesKillFeature.KnifeCheckConnection = nil
     end
+    
     for _, conn in ipairs(MainModule.SpikesKillFeature.AnimationStoppedConnections) do
         pcall(function() conn:Disconnect() end)
     end
     MainModule.SpikesKillFeature.AnimationStoppedConnections = {}
+    
     MainModule.SpikesKillFeature.OriginalCFrame = nil
     MainModule.SpikesKillFeature.ActiveAnimation = false
     MainModule.SpikesKillFeature.AnimationStartTime = 0
     MainModule.SpikesKillFeature.TrackedAnimations = {}
     MainModule.SpikesKillFeature.NoKnifeTimer = 0
+    
     if not enabled then
         MainModule.SpikesKillFeature.HasKnife = false
         return
     end
+    
     MainModule.DisableSpikes(true)
+    
     local function teleportToSpikes(character)
         if not character or not character:FindFirstChild("HumanoidRootPart") then
             return
         end
+        
         local spikesPosition = MainModule.SpikesKillFeature.SpikesPosition
         if not spikesPosition then
             local hideAndSeekMap = workspace:FindFirstChild("HideAndSeekMap")
@@ -573,7 +702,9 @@ function MainModule.ToggleSpikesKill(enabled)
                 end
             end
         end
+        
         MainModule.SpikesKillFeature.OriginalCFrame = character:GetPrimaryPartCFrame()
+        
         if spikesPosition then
             local targetPosition = spikesPosition + Vector3.new(0, MainModule.SpikesKillFeature.PlatformHeightOffset, 0)
             character:SetPrimaryPartCFrame(CFrame.new(targetPosition))
@@ -583,32 +714,41 @@ function MainModule.ToggleSpikesKill(enabled)
             character:SetPrimaryPartCFrame(CFrame.new(targetPosition))
         end
     end
+    
     local function returnToOriginalPosition(character)
         if not character or not character:FindFirstChild("HumanoidRootPart") then
             return
         end
+        
         if MainModule.SpikesKillFeature.OriginalCFrame then
             character:SetPrimaryPartCFrame(MainModule.SpikesKillFeature.OriginalCFrame)
             MainModule.SpikesKillFeature.OriginalCFrame = nil
         end
     end
+    
     local function checkAnimations()
         if not MainModule.SpikesKillFeature.Enabled then return end
+        
         local character = GetCharacter()
         if not character then return end
         local humanoid = GetHumanoid(character)
         if not humanoid then return end
+        
         local activeTracks = humanoid:GetPlayingAnimationTracks()
         for _, track in pairs(activeTracks) do
             if track.Animation and track.Animation.AnimationId == MainModule.SpikesKillFeature.AnimationId then
                 if not MainModule.SpikesKillFeature.TrackedAnimations[track] then
                     MainModule.SpikesKillFeature.TrackedAnimations[track] = true
+                    
                     if not MainModule.SpikesKillFeature.ActiveAnimation then
                         MainModule.SpikesKillFeature.ActiveAnimation = true
                         MainModule.SpikesKillFeature.AnimationStartTime = tick()
+                        
                         teleportToSpikes(character)
+                        
                         local stoppedConn = track.Stopped:Connect(function()
                             task.wait(MainModule.SpikesKillFeature.ReturnDelay)
+                            
                             if MainModule.SpikesKillFeature.ActiveAnimation and MainModule.SpikesKillFeature.OriginalCFrame then
                                 returnToOriginalPosition(character)
                                 MainModule.SpikesKillFeature.ActiveAnimation = false
@@ -621,18 +761,25 @@ function MainModule.ToggleSpikesKill(enabled)
             end
         end
     end
+    
     local function setupCharacter(char)
         local humanoid = char:WaitForChild("Humanoid")
+        
         MainModule.SpikesKillFeature.AnimationConnection = humanoid.AnimationPlayed:Connect(function(track)
             if not MainModule.SpikesKillFeature.Enabled then return end
+            
             if track.Animation and track.Animation.AnimationId == MainModule.SpikesKillFeature.AnimationId then
                 MainModule.SpikesKillFeature.TrackedAnimations[track] = true
+                
                 if not MainModule.SpikesKillFeature.ActiveAnimation then
                     MainModule.SpikesKillFeature.ActiveAnimation = true
                     MainModule.SpikesKillFeature.AnimationStartTime = tick()
+                    
                     teleportToSpikes(char)
+                    
                     local stoppedConn = track.Stopped:Connect(function()
                         task.wait(MainModule.SpikesKillFeature.ReturnDelay)
+                        
                         if MainModule.SpikesKillFeature.OriginalCFrame then
                             returnToOriginalPosition(char)
                             MainModule.SpikesKillFeature.ActiveAnimation = false
@@ -644,18 +791,22 @@ function MainModule.ToggleSpikesKill(enabled)
             end
         end)
     end
+    
     local char = LocalPlayer.Character
     if char then
         setupCharacter(char)
     end
+    
     MainModule.SpikesKillFeature.CharacterAddedConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
         task.wait(1)
         setupCharacter(newChar)
     end)
+    
     MainModule.SpikesKillFeature.AnimationCheckConnection = RunService.Heartbeat:Connect(function()
         if not MainModule.SpikesKillFeature.Enabled then return end
         checkAnimations()
     end)
+    
     MainModule.SpikesKillFeature.SafetyCheckConnection = RunService.Heartbeat:Connect(function()
         if not MainModule.SpikesKillFeature.ActiveAnimation then return end
         if tick() - MainModule.SpikesKillFeature.AnimationStartTime >= 10 then
@@ -667,20 +818,26 @@ function MainModule.ToggleSpikesKill(enabled)
             MainModule.SpikesKillFeature.TrackedAnimations = {}
         end
     end)
+    
     MainModule.SpikesKillFeature.KnifeCheckConnection = RunService.Heartbeat:Connect(function()
         if not MainModule.SpikesKillFeature.Enabled then return end
+        
         local currentTime = tick()
         if currentTime - MainModule.SpikesKillFeature.LastKnifeCheckTime < MainModule.SpikesKillFeature.KnifeCheckCooldown then
             return
         end
         MainModule.SpikesKillFeature.LastKnifeCheckTime = currentTime
+        
         local hasKnife = MainModule.CheckKnifeInInventory()
+        
         if hasKnife then
             MainModule.SpikesKillFeature.HasKnife = true
             MainModule.SpikesKillFeature.NoKnifeTimer = 0
         else
             MainModule.SpikesKillFeature.NoKnifeTimer = MainModule.SpikesKillFeature.NoKnifeTimer + MainModule.SpikesKillFeature.KnifeCheckCooldown
+            
             if MainModule.SpikesKillFeature.NoKnifeTimer >= MainModule.SpikesKillFeature.NoKnifeTimeout then
+                ShowNotification("Spikes Kill", "Knife not found!", 3)
                 MainModule.ToggleSpikesKill(false)
             end
         end
@@ -758,10 +915,12 @@ MainModule.AutoDodge = {
     Range = 5,
     RangeSquared = 5 * 5,
     AnimationIdsSet = {},
+    
     CapturedCall = nil,
     LastCapturedCallTime = 0,
     OriginalFireServer = nil,
     Remote = nil,
+    
     TrackedPlayers = {}
 }
 
@@ -769,102 +928,82 @@ for _, id in ipairs(MainModule.AutoDodge.AnimationIds) do
     MainModule.AutoDodge.AnimationIdsSet[id] = true
 end
 
-function MainModule.ToggleAutoDodge(enabled)
-    MainModule.AutoDodge.Enabled = false
-    for _, conn in pairs(MainModule.AutoDodge.Connections) do
-        if conn then
-            pcall(function() conn:Disconnect() end)
-        end
-    end
-    MainModule.AutoDodge.Connections = {}
-    MainModule.AutoDodge.TrackedPlayers = {}
-    MainModule.AutoDodge.LastDodgeTime = 0
-    if enabled then
-        MainModule.AutoDodge.Enabled = true
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                local function setupCharacter(character)
-                    if not character or not MainModule.AutoDodge.Enabled then return end
-                    local humanoid = character:FindFirstChild("Humanoid")
-                    if not humanoid then return end
-                    local conn = humanoid.AnimationPlayed:Connect(function(track)
-                        if not MainModule.AutoDodge.Enabled then return end
-                        local animId = track.Animation and track.Animation.AnimationId
-                        if not animId then return end
-                        if not MainModule.AutoDodge.AnimationIdsSet[animId] then return end
-                        local currentTime = tick()
-                        if currentTime - MainModule.AutoDodge.LastDodgeTime < MainModule.AutoDodge.DodgeCooldown then return end
-                        if not LocalPlayer or not LocalPlayer.Character then return end
-                        if not player or not player.Character then return end
-                        local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
-                        if not (localRoot and targetRoot) then return end
-                        local diff = targetRoot.Position - localRoot.Position
-                        local distanceSquared = diff.X * diff.X + diff.Y * diff.Y + diff.Z * diff.Z
-                        if distanceSquared > MainModule.AutoDodge.RangeSquared then return end
-                    end)
-                    if not MainModule.AutoDodge.TrackedPlayers[player.Name] then
-                        MainModule.AutoDodge.TrackedPlayers[player.Name] = {}
-                    end
-                    table.insert(MainModule.AutoDodge.TrackedPlayers[player.Name], conn)
-                    table.insert(MainModule.AutoDodge.Connections, conn)
-                end
-                if player.Character then
-                    setupCharacter(player.Character)
-                end
-                local charConn = player.CharacterAdded:Connect(function(character)
-                    if not MainModule.AutoDodge.Enabled then return end
-                    if MainModule.AutoDodge.TrackedPlayers[player.Name] then
-                        for _, conn in pairs(MainModule.AutoDodge.TrackedPlayers[player.Name]) do
-                            pcall(function() conn:Disconnect() end)
-                        end
-                        MainModule.AutoDodge.TrackedPlayers[player.Name] = {}
-                    end
-                    setupCharacter(character)
-                end)
-                table.insert(MainModule.AutoDodge.Connections, charConn)
-            end
-        end
-    end
-end
-
 function MainModule.TeleportToHider()
-    local character = GetCharacter()
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    local localPlayer = Players.LocalPlayer
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and IsHider(player) and player.Character then
-            local hiderRoot = player.Character:FindFirstChild("HumanoidRootPart")
-            if hiderRoot then
-                character.HumanoidRootPart.CFrame = hiderRoot.CFrame
-                return true
+        if player ~= localPlayer and IsHider(player) then
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local localCharacter = localPlayer.Character
+                if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
+                    localCharacter.HumanoidRootPart.CFrame = character.HumanoidRootPart.CFrame
+                    return true
+                end
             end
         end
     end
     return false
 end
 
-function MainModule.Pentathlon_AutoGonggi()
-    local currentState = MainModule.AutoGonggi.Enabled
-    MainModule.ToggleAutoGonggi(not currentState)
-    return not currentState
+function MainModule.CreateButton(buttonName, functionName, parentFrame)
+    local button = Instance.new("TextButton")
+    button.Name = buttonName
+    button.Size = UDim2.new(1, -20, 0, 40)
+    button.Position = UDim2.new(0, 10, 0, 0)
+    button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    button.BorderSizePixel = 0
+    button.Text = buttonName
+    button.TextColor3 = Color3.fromRGB(240, 240, 240)
+    button.TextSize = 16
+    button.Font = Enum.Font.GothamMedium
+    button.AutoButtonColor = true
+    button.Parent = parentFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = button
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(60, 60, 60)
+    stroke.Thickness = 2
+    stroke.Parent = button
+    
+    button.MouseButton1Click:Connect(function()
+        if MainModule[functionName] then
+            MainModule[functionName]()
+        end
+    end)
+    
+    return button
 end
 
-function MainModule.HNS_SpikesKill()
-    local currentState = MainModule.SpikesKillFeature.Enabled
-    MainModule.ToggleSpikesKill(not currentState)
-    return not currentState
-end
-
-function MainModule.HNS_InfinityStamina()
-    local currentState = MainModule.HNS.InfinityStaminaEnabled
-    MainModule.ToggleHNSInfinityStamina(not currentState)
-    return not currentState
-end
-
-function MainModule.HNS_AutoDodge()
-    local currentState = MainModule.AutoDodge.Enabled
-    MainModule.ToggleAutoDodge(not currentState)
-    return not currentState
+function MainModule.CreateGameSection(gameName, functions, parentFrame)
+    local title = Instance.new("TextLabel")
+    title.Name = gameName .. "Title"
+    title.Size = UDim2.new(1, -20, 0, 35)
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = gameName
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 22
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = parentFrame
+    
+    local titleStroke = Instance.new("UIStroke")
+    titleStroke.Color = Color3.fromRGB(100, 100, 100)
+    titleStroke.Thickness = 1
+    titleStroke.Parent = title
+    
+    local yOffset = 40
+    
+    for i, funcInfo in ipairs(functions) do
+        local button = MainModule.CreateButton(funcInfo.name, funcInfo.func, parentFrame)
+        button.Position = UDim2.new(0, 10, 0, yOffset)
+        yOffset = yOffset + 50
+    end
+    
+    return yOffset + 20
 end
 
 return MainModule
