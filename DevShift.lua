@@ -733,4 +733,4 @@ if isMobile then
     openButton.Visible = true
 end
 
-print("DevShift loaded successfully - Menu will open automatically on start")
+print("DevShift loaded successfully")
