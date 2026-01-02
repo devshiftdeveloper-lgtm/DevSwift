@@ -12,6 +12,17 @@ if not RunService:IsClient() and not RunService:IsStudio() then
     return
 end
 
+-- Загрузка MainModule
+local MainModule
+local success, err = pcall(function()
+    MainModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/devshiftdeveloper-lgtm/DevSwift/main/Main.lua"))()
+end)
+
+if not success then
+    warn("Failed to load MainModule:", err)
+    MainModule = {}
+end
+
 local originalMouseIconEnabled = UserInputService.MouseIconEnabled
 local isMenuOpen = false
 local isMobile = UserInputService.TouchEnabled
@@ -54,7 +65,7 @@ end
 -- Создание основного GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "DevShiftGUI"
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 50
 screenGui.IgnoreGuiInset = true
@@ -77,7 +88,7 @@ background.ZIndex = 1
 background.Visible = false
 background.Parent = screenGui
 
--- Основной контейнер (увеличен на 20%)
+-- Основной контейнер
 local mainContainer = Instance.new("Frame")
 mainContainer.Name = "MainContainer"
 mainContainer.Size = isMobile and UDim2.new(0.9, 0, 0.85, 0) or UDim2.new(0, 840, 0, 600)
@@ -86,7 +97,7 @@ mainContainer.Position = UDim2.new(0.5, 0, 0.5, -100)
 mainContainer.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
 mainContainer.BackgroundTransparency = 1
 mainContainer.BorderSizePixel = 0
-mainContainer.ZIndex = 10
+mainContainer.ZIndex = 2
 mainContainer.Visible = false
 mainContainer.Parent = screenGui
 
@@ -111,7 +122,7 @@ mainGlow.ImageColor3 = Color3.fromRGB(30, 30, 30)
 mainGlow.ImageTransparency = 1
 mainGlow.ScaleType = Enum.ScaleType.Slice
 mainGlow.SliceCenter = Rect.new(23, 23, 277, 277)
-mainGlow.ZIndex = 9
+mainGlow.ZIndex = 1
 mainGlow.Parent = mainContainer
 
 -- Внутренний фон
@@ -121,7 +132,7 @@ innerBackground.Position = UDim2.new(0, 6, 0, 6)
 innerBackground.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 innerBackground.BackgroundTransparency = 0.6
 innerBackground.BorderSizePixel = 0
-innerBackground.ZIndex = 8
+innerBackground.ZIndex = 1
 innerBackground.Parent = mainContainer
 
 local innerCorner = Instance.new("UICorner")
@@ -133,7 +144,7 @@ local contentContainer = Instance.new("Frame")
 contentContainer.Size = UDim2.new(1, -24, 1, -24)
 contentContainer.Position = UDim2.new(0, 12, 0, 12)
 contentContainer.BackgroundTransparency = 1
-contentContainer.ZIndex = 11
+contentContainer.ZIndex = 3
 contentContainer.Parent = mainContainer
 
 -- Верхняя панель
@@ -142,7 +153,7 @@ topBar.Size = UDim2.new(1, 0, 0, isMobile and 50 or 60)
 topBar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 topBar.BackgroundTransparency = 1
 topBar.BorderSizePixel = 0
-topBar.ZIndex = 12
+topBar.ZIndex = 4
 topBar.Parent = contentContainer
 
 local topBarCorner = Instance.new("UICorner")
@@ -163,7 +174,7 @@ titleLabel.TextTransparency = 1
 titleLabel.TextXAlignment = isMobile and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center
 titleLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 titleLabel.TextStrokeTransparency = 0.3
-titleLabel.ZIndex = 13
+titleLabel.ZIndex = 5
 titleLabel.Parent = topBar
 
 -- Кнопка закрытия (только для мобильных)
@@ -180,9 +191,9 @@ closeButton.TextColor3 = Color3.fromRGB(220, 220, 220)
 closeButton.TextSize = 20
 closeButton.Font = Enum.Font.GothamBold
 closeButton.TextTransparency = 1
-closeButton.ZIndex = 13
+closeButton.ZIndex = 5
 closeButton.AutoButtonColor = false
-closeButton.Visible = isMobile -- Только на мобильных
+closeButton.Visible = isMobile
 closeButton.Parent = topBar
 
 local closeButtonCorner = Instance.new("UICorner")
@@ -200,17 +211,17 @@ local mainContent = Instance.new("Frame")
 mainContent.Size = UDim2.new(1, 0, 1, -(isMobile and 60 or 70))
 mainContent.Position = UDim2.new(0, 0, 0, isMobile and 60 or 70)
 mainContent.BackgroundTransparency = 1
-mainContent.ZIndex = 11
+mainContent.ZIndex = 3
 mainContent.Parent = contentContainer
 
 -- Контейнер вкладок
 local tabsContainer = Instance.new("Frame")
-tabsContainer.Size = isMobile and UDim2.new(1, 0, 0.25, 0) or UDim2.new(0.3, -10, 1, 0)
+tabsContainer.Size = isMobile and UDim2.new(1, 0, 0.25, 0) or UDim2.new(0.25, -10, 1, 0)
 tabsContainer.Position = isMobile and UDim2.new(0, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
 tabsContainer.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 tabsContainer.BackgroundTransparency = 1
 tabsContainer.BorderSizePixel = 0
-tabsContainer.ZIndex = 12
+tabsContainer.ZIndex = 4
 tabsContainer.Parent = mainContent
 
 local tabsCorner = Instance.new("UICorner")
@@ -224,7 +235,7 @@ tabsList.Size = isMobile and UDim2.new(1, -10, 1, -10) or UDim2.new(1, -10, 1, -
 tabsList.Position = isMobile and UDim2.new(0, 5, 0, 5) or UDim2.new(0, 5, 0, 10)
 tabsList.BackgroundTransparency = 1
 tabsList.BorderSizePixel = 0
-tabsList.ZIndex = 13
+tabsList.ZIndex = 5
 tabsList.Parent = tabsContainer
 
 -- Layout для вкладок
@@ -237,24 +248,17 @@ tabsListLayout.Parent = tabsList
 
 -- Контейнер функций
 local functionsContainer = Instance.new("Frame")
-functionsContainer.Size = isMobile and UDim2.new(1, 0, 0.75, -10) or UDim2.new(0.7, -10, 1, 0)
-functionsContainer.Position = isMobile and UDim2.new(0, 0, 0.25, 10) or UDim2.new(0.3, 10, 0, 0)
+functionsContainer.Size = isMobile and UDim2.new(1, 0, 0.75, -10) or UDim2.new(0.75, -10, 1, 0)
+functionsContainer.Position = isMobile and UDim2.new(0, 0, 0.25, 10) or UDim2.new(0.25, 10, 0, 0)
 functionsContainer.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 functionsContainer.BackgroundTransparency = 1
 functionsContainer.BorderSizePixel = 0
-functionsContainer.ZIndex = 12
+functionsContainer.ZIndex = 4
 functionsContainer.Parent = mainContent
 
 local functionsCorner = Instance.new("UICorner")
 functionsCorner.CornerRadius = UDim.new(0, isMobile and 10 or 12)
 functionsCorner.Parent = functionsContainer
-
-local functionsContent = Instance.new("Frame")
-functionsContent.Size = UDim2.new(1, -20, 1, -20)
-functionsContent.Position = UDim2.new(0, 10, 0, 10)
-functionsContent.BackgroundTransparency = 1
-functionsContent.ZIndex = 13
-functionsContent.Parent = functionsContainer
 
 -- Кнопка открытия на мобильных
 local openButton = Instance.new("TextButton")
@@ -286,16 +290,16 @@ openButtonStroke.Parent = openButton
 local function createTabButton(tabName)
     local tabButton = Instance.new("TextButton")
     tabButton.Name = tabName .. "Tab"
-    tabButton.Size = isMobile and UDim2.new(0, 110, 0, 45) or UDim2.new(1, 0, 0, 55)
+    tabButton.Size = isMobile and UDim2.new(0, 110, 0, 45) or UDim2.new(1, 0, 0, 50)
     tabButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     tabButton.BackgroundTransparency = 1
     tabButton.BorderSizePixel = 0
     tabButton.Text = tabName
     tabButton.TextColor3 = Color3.fromRGB(220, 220, 220)
-    tabButton.TextSize = isMobile and 18 or 22
+    tabButton.TextSize = isMobile and 18 or 18
     tabButton.Font = isMobile and Enum.Font.GothamMedium or Enum.Font.GothamMedium
     tabButton.TextTransparency = 1
-    tabButton.ZIndex = 14
+    tabButton.ZIndex = 6
     tabButton.AutoButtonColor = false
     tabButton.Parent = tabsList
     
@@ -305,14 +309,14 @@ local function createTabButton(tabName)
     
     local tabStroke = Instance.new("UIStroke")
     tabStroke.Color = Color3.fromRGB(50, 50, 50)
-    tabStroke.Thickness = isMobile and 1.5 or 2.5
+    tabStroke.Thickness = isMobile and 1.5 or 2
     tabStroke.Transparency = 1
     tabStroke.Parent = tabButton
     
     return tabButton
 end
 
--- Создание вкладок
+-- Создание вкладок (GAMES первым, COMBAT вторым)
 local tabNames = {"Games", "Combat", "Misc", "Guards", "Settings"}
 local tabButtons = {}
 
@@ -321,34 +325,274 @@ for i, tabName in ipairs(tabNames) do
     tabButtons[tabName] = tabButton
 end
 
--- Функция показа контента вкладки
-local function showTabContent(tabName)
-    functionsContent:ClearAllChildren()
+-- Переменная для текущего контента
+local currentContentFrame
+
+-- Функция создания кнопки с лучшим расположением
+local function createGameButton(name, funcName, yPosition, parent)
+    local button = Instance.new("TextButton")
+    button.Name = name .. "Button"
+    button.Size = UDim2.new(1, -10, 0, 40)
+    button.Position = UDim2.new(0, 5, 0, yPosition)
+    button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    button.BorderSizePixel = 0
+    button.Text = name
+    button.TextColor3 = Color3.fromRGB(240, 240, 240)
+    button.TextSize = 16
+    button.Font = Enum.Font.GothamMedium
+    button.AutoButtonColor = true
+    button.ZIndex = 9
+    button.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = button
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(60, 60, 60)
+    stroke.Thickness = 2
+    stroke.ZIndex = 9
+    stroke.Parent = button
+    
+    if MainModule[funcName] then
+        button.MouseButton1Click:Connect(function()
+            MainModule[funcName]()
+        end)
+        
+        -- Анимация при наведении (только для ПК)
+        if not isMobile then
+            button.MouseEnter:Connect(function()
+                TweenService:Create(button, TweenInfo.new(0.15), {
+                    BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                }):Play()
+            end)
+            
+            button.MouseLeave:Connect(function()
+                TweenService:Create(button, TweenInfo.new(0.15), {
+                    BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+                }):Play()
+            end)
+        end
+    end
+    
+    return button
+end
+
+-- Функция создания контента для Games
+local function createGamesContent()
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = "GamesContent"
+    contentFrame.Size = UDim2.new(1, -20, 1, -20)
+    contentFrame.Position = UDim2.new(0, 10, 0, 10)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.ZIndex = 5
+    contentFrame.Parent = functionsContainer
+    
+    -- ScrollingFrame для Games
+    local scrollingFrame = Instance.new("ScrollingFrame")
+    scrollingFrame.Name = "GamesScrolling"
+    scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollingFrame.BackgroundTransparency = 1
+    scrollingFrame.BorderSizePixel = 0
+    scrollingFrame.ScrollBarThickness = 6
+    scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
+    scrollingFrame.ZIndex = 6
+    scrollingFrame.Parent = contentFrame
+    
+    local gamesContainer = Instance.new("Frame")
+    gamesContainer.Name = "GamesContainer"
+    gamesContainer.Size = UDim2.new(1, 0, 0, 0)
+    gamesContainer.BackgroundTransparency = 1
+    gamesContainer.ZIndex = 7
+    gamesContainer.Parent = scrollingFrame
+    
+    local gamesLayout = Instance.new("UIListLayout")
+    gamesLayout.Padding = UDim.new(0, 15) -- Уменьшен отступ между секциями
+    gamesLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    gamesLayout.Parent = gamesContainer
+    
+    -- RLGL Section
+    local rlglSection = Instance.new("Frame")
+    rlglSection.Name = "RLGLSection"
+    rlglSection.Size = UDim2.new(1, 0, 0, 130) -- Уменьшена высота
+    rlglSection.BackgroundTransparency = 1
+    rlglSection.LayoutOrder = 1
+    rlglSection.ZIndex = 8
+    rlglSection.Parent = gamesContainer
+    
+    local rlglTitle = Instance.new("TextLabel")
+    rlglTitle.Name = "RLGLTitle"
+    rlglTitle.Size = UDim2.new(1, 0, 0, 30)
+    rlglTitle.BackgroundTransparency = 1
+    rlglTitle.Text = "RLGL"
+    rlglTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    rlglTitle.TextSize = 22
+    rlglTitle.Font = Enum.Font.GothamBold
+    rlglTitle.TextXAlignment = Enum.TextXAlignment.Left
+    rlglTitle.ZIndex = 9
+    rlglTitle.Parent = rlglSection
+    
+    local rlglTitleStroke = Instance.new("UIStroke")
+    rlglTitleStroke.Color = Color3.fromRGB(100, 100, 100)
+    rlglTitleStroke.Thickness = 1
+    rlglTitleStroke.ZIndex = 9
+    rlglTitleStroke.Parent = rlglTitle
+    
+    -- RLGL Buttons (ближе друг к другу)
+    local rlglButtonsFrame = Instance.new("Frame")
+    rlglButtonsFrame.Name = "RLGLButtons"
+    rlglButtonsFrame.Size = UDim2.new(1, 0, 0, 90)
+    rlglButtonsFrame.Position = UDim2.new(0, 0, 0, 35)
+    rlglButtonsFrame.BackgroundTransparency = 1
+    rlglButtonsFrame.ZIndex = 9
+    rlglButtonsFrame.Parent = rlglSection
+    
+    local rlglButton1 = createGameButton("TP TO START", "RLGL_TP_ToStart", 0, rlglButtonsFrame)
+    rlglButton1.Size = UDim2.new(1, -10, 0, 40)
+    rlglButton1.Position = UDim2.new(0, 5, 0, 0)
+    
+    local rlglButton2 = createGameButton("TP TO END", "RLGL_TP_ToEnd", 50, rlglButtonsFrame) -- Отступ 10 пикселей вместо 15
+    rlglButton2.Size = UDim2.new(1, -10, 0, 40)
+    rlglButton2.Position = UDim2.new(0, 5, 0, 50)
+    
+    -- Dalgona Section
+    local dalgonaSection = Instance.new("Frame")
+    dalgonaSection.Name = "DalgonaSection"
+    dalgonaSection.Size = UDim2.new(1, 0, 0, 130) -- Уменьшена высота
+    dalgonaSection.BackgroundTransparency = 1
+    dalgonaSection.LayoutOrder = 2
+    dalgonaSection.ZIndex = 8
+    dalgonaSection.Parent = gamesContainer
+    
+    local dalgonaTitle = Instance.new("TextLabel")
+    dalgonaTitle.Name = "DalgonaTitle"
+    dalgonaTitle.Size = UDim2.new(1, 0, 0, 30)
+    dalgonaTitle.BackgroundTransparency = 1
+    dalgonaTitle.Text = "DALGONA"
+    dalgonaTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dalgonaTitle.TextSize = 22
+    dalgonaTitle.Font = Enum.Font.GothamBold
+    dalgonaTitle.TextXAlignment = Enum.TextXAlignment.Left
+    dalgonaTitle.ZIndex = 9
+    dalgonaTitle.Parent = dalgonaSection
+    
+    local dalgonaTitleStroke = Instance.new("UIStroke")
+    dalgonaTitleStroke.Color = Color3.fromRGB(100, 100, 100)
+    dalgonaTitleStroke.Thickness = 1
+    dalgonaTitleStroke.ZIndex = 9
+    dalgonaTitleStroke.Parent = dalgonaTitle
+    
+    -- Dalgona Buttons (ближе друг к другу)
+    local dalgonaButtonsFrame = Instance.new("Frame")
+    dalgonaButtonsFrame.Name = "DalgonaButtons"
+    dalgonaButtonsFrame.Size = UDim2.new(1, 0, 0, 90)
+    dalgonaButtonsFrame.Position = UDim2.new(0, 0, 0, 35)
+    dalgonaButtonsFrame.BackgroundTransparency = 1
+    dalgonaButtonsFrame.ZIndex = 9
+    dalgonaButtonsFrame.Parent = dalgonaSection
+    
+    local dalgonaButton1 = createGameButton("Complete Dalgona", "Dalgona_Complete", 0, dalgonaButtonsFrame)
+    dalgonaButton1.Size = UDim2.new(1, -10, 0, 40)
+    dalgonaButton1.Position = UDim2.new(0, 5, 0, 0)
+    
+    local dalgonaButton2 = createGameButton("Free Lighter", "Dalgona_FreeLighter", 50, dalgonaButtonsFrame) -- Отступ 10 пикселей вместо 15
+    dalgonaButton2.Size = UDim2.new(1, -10, 0, 40)
+    dalgonaButton2.Position = UDim2.new(0, 5, 0, 50)
+    
+    -- Other Games (Coming Soon)
+    local otherGames = {"PENTATHLON", "HNS", "GLASS BRIDGE", "TUG OF WAR", "MINGLE", "LAST DINNER", "REBEL", "SKY SQUID"}
+    
+    for i, gameName in ipairs(otherGames) do
+        local gameSection = Instance.new("Frame")
+        gameSection.Name = gameName .. "Section"
+        gameSection.Size = UDim2.new(1, 0, 0, 50)
+        gameSection.BackgroundTransparency = 1
+        gameSection.LayoutOrder = 2 + i
+        gameSection.ZIndex = 8
+        gameSection.Parent = gamesContainer
+        
+        local gameLabel = Instance.new("TextLabel")
+        gameLabel.Name = gameName .. "Label"
+        gameLabel.Size = UDim2.new(1, 0, 1, 0)
+        gameLabel.BackgroundTransparency = 1
+        gameLabel.Text = gameName .. " - SOON..."
+        gameLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        gameLabel.TextSize = 18
+        gameLabel.Font = Enum.Font.GothamMedium
+        gameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        gameLabel.ZIndex = 9
+        gameLabel.Parent = gameSection
+    end
+    
+    -- Update scrolling frame size
+    gamesLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        gamesContainer.Size = UDim2.new(1, 0, 0, gamesLayout.AbsoluteContentSize.Y)
+        scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, gamesLayout.AbsoluteContentSize.Y)
+    end)
+    
+    -- Force update
+    task.wait(0.1)
+    gamesContainer.Size = UDim2.new(1, 0, 0, gamesLayout.AbsoluteContentSize.Y)
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, gamesLayout.AbsoluteContentSize.Y)
+    
+    return contentFrame
+end
+
+-- Функция создания пустого контента (для других вкладок)
+local function createEmptyContent(tabName)
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = tabName .. "Content"
+    contentFrame.Size = UDim2.new(1, -20, 1, -20)
+    contentFrame.Position = UDim2.new(0, 10, 0, 10)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.ZIndex = 5
+    contentFrame.Parent = functionsContainer
     
     local comingSoon = Instance.new("TextLabel")
-    comingSoon.Size = UDim2.new(1, 0, 0.5, 0)
-    comingSoon.Position = UDim2.new(0, 0, 0.25, 0)
+    comingSoon.Size = UDim2.new(1, 0, 0, 100)
+    comingSoon.Position = UDim2.new(0, 0, 0.4, 0)
     comingSoon.BackgroundTransparency = 1
-    comingSoon.Text = "Coming Soon..."
-    comingSoon.TextColor3 = Color3.fromRGB(150, 150, 150)
-    comingSoon.TextSize = isMobile and 28 or 36
-    comingSoon.Font = Enum.Font.GothamMedium
+    comingSoon.Text = tabName .. "\nComing Soon..."
+    comingSoon.TextColor3 = Color3.fromRGB(200, 200, 200)
+    comingSoon.TextSize = 24
+    comingSoon.Font = Enum.Font.GothamBold
     comingSoon.TextXAlignment = Enum.TextXAlignment.Center
     comingSoon.TextYAlignment = Enum.TextYAlignment.Center
-    comingSoon.ZIndex = 14
-    comingSoon.Parent = functionsContent
+    comingSoon.ZIndex = 6
+    comingSoon.Parent = contentFrame
     
-    local description = Instance.new("TextLabel")
-    description.Size = UDim2.new(1, 0, 0, isMobile and 35 or 45)
-    description.Position = UDim2.new(0, 0, 0.5, 15)
-    description.BackgroundTransparency = 1
-    description.Text = tabName .. " features will be available soon"
-    description.TextColor3 = Color3.fromRGB(120, 120, 120)
-    description.TextSize = isMobile and 16 or 22
-    description.Font = Enum.Font.Gotham
-    description.TextXAlignment = Enum.TextXAlignment.Center
-    description.ZIndex = 14
-    description.Parent = functionsContent
+    return contentFrame
+end
+
+-- Функция показа контента вкладки
+local function showTabContent(tabName)
+    -- Удаляем предыдущий контент
+    if currentContentFrame then
+        currentContentFrame:Destroy()
+        currentContentFrame = nil
+    end
+    
+    -- Создаем новый контент
+    if tabName == "Games" then
+        currentContentFrame = createGamesContent()
+    else
+        currentContentFrame = createEmptyContent(tabName)
+    end
+    
+    -- Анимация активной вкладки
+    for otherTabName, otherTabButton in pairs(tabButtons) do
+        if otherTabName ~= tabName then
+            TweenService:Create(otherTabButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+                TextColor3 = Color3.fromRGB(180, 180, 180)
+            }):Play()
+        else
+            TweenService:Create(tabButtons[tabName], TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(40, 40, 40),
+                TextColor3 = Color3.fromRGB(255, 255, 255)
+            }):Play()
+        end
+    end
 end
 
 -- Функция показа меню
@@ -398,7 +642,6 @@ local function showMenu()
     })
     titleTween:Play()
     
-    -- Кнопка закрытия (только для мобильных)
     if isMobile then
         local closeTween = TweenService:Create(closeButton, TweenInfo.new(0.4), {
             BackgroundTransparency = 0,
@@ -446,10 +689,8 @@ local function showMenu()
         end
     end
     
-    -- Показываем первую вкладку
-    if tabButtons["Games"] then
-        showTabContent("Games")
-    end
+    -- Показываем Games вкладку
+    showTabContent("Games")
 end
 
 -- Функция скрытия меню
@@ -542,6 +783,13 @@ local function hideMenu()
     if isMobile then
         openButton.Visible = true
     end
+    
+    -- Удаляем текущий контент
+    if currentContentFrame then
+        currentContentFrame:Destroy()
+        currentContentFrame = nil
+    end
+    
     isMenuOpen = false
     
     restoreGameControls()
@@ -554,79 +802,6 @@ local function toggleMenu()
     else
         showMenu()
     end
-end
-
--- Обработчики событий для мобильных устройств
-if isMobile then
-    openButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            toggleMenu()
-        end
-    end)
-    
-    -- Анимация нажатия кнопки OPEN
-    openButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            local pressTween = TweenService:Create(openButton, TweenInfo.new(0.1), {
-                BackgroundTransparency = 0.6,
-                Size = UDim2.new(0, 65, 0, 65)
-            })
-            pressTween:Play()
-            
-            local strokeTween = TweenService:Create(openButtonStroke, TweenInfo.new(0.1), {
-                Thickness = 2
-            })
-            strokeTween:Play()
-        end
-    end)
-    
-    openButton.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            local releaseTween = TweenService:Create(openButton, TweenInfo.new(0.1), {
-                BackgroundTransparency = 0.4,
-                Size = UDim2.new(0, 70, 0, 70)
-            })
-            releaseTween:Play()
-            
-            local strokeTween = TweenService:Create(openButtonStroke, TweenInfo.new(0.1), {
-                Thickness = 3
-            })
-            strokeTween:Play()
-        end
-    end)
-    
-    -- Анимация кнопки X для мобильных
-    closeButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            local pressTween = TweenService:Create(closeButton, TweenInfo.new(0.1), {
-                BackgroundColor3 = Color3.fromRGB(35, 35, 35),
-                Size = UDim2.new(0, 38, 0, 38)
-            })
-            pressTween:Play()
-            
-            local strokeTween = TweenService:Create(closeButtonStroke, TweenInfo.new(0.1), {
-                Color = Color3.fromRGB(100, 100, 100)
-            })
-            strokeTween:Play()
-        end
-    end)
-    
-    closeButton.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            local releaseTween = TweenService:Create(closeButton, TweenInfo.new(0.1), {
-                BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-                Size = UDim2.new(0, 40, 0, 40)
-            })
-            releaseTween:Play()
-            
-            local strokeTween = TweenService:Create(closeButtonStroke, TweenInfo.new(0.1), {
-                Color = Color3.fromRGB(60, 60, 60)
-            })
-            strokeTween:Play()
-            
-            hideMenu()
-        end
-    end)
 end
 
 -- Обработчики событий для вкладок
@@ -643,67 +818,52 @@ if not isMobile and UserInputService.MouseEnabled then
     -- Анимация вкладок на ПК
     for tabName, tabButton in pairs(tabButtons) do
         tabButton.MouseEnter:Connect(function()
-            local hoverTween = TweenService:Create(tabButton, TweenInfo.new(0.15), {
-                BackgroundColor3 = Color3.fromRGB(35, 35, 35),
-                Size = UDim2.new(1, 2, 0, 57)
-            })
-            hoverTween:Play()
+            if not isMenuOpen then return end
             
-            local stroke = tabButton:FindFirstChild("UIStroke")
-            if stroke then
-                local strokeTween = TweenService:Create(stroke, TweenInfo.new(0.15), {
-                    Color = Color3.fromRGB(100, 100, 100),
-                    Thickness = 2.8
-                })
-                strokeTween:Play()
+            local activeTab = nil
+            for tName, tButton in pairs(tabButtons) do
+                if tButton.BackgroundColor3 == Color3.fromRGB(40, 40, 40) then
+                    activeTab = tName
+                    break
+                end
+            end
+            
+            if tabName ~= activeTab then
+                TweenService:Create(tabButton, TweenInfo.new(0.15), {
+                    BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+                    TextColor3 = Color3.fromRGB(220, 220, 220)
+                }):Play()
             end
         end)
         
         tabButton.MouseLeave:Connect(function()
-            local leaveTween = TweenService:Create(tabButton, TweenInfo.new(0.15), {
-                BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-                Size = UDim2.new(1, 0, 0, 55)
-            })
-            leaveTween:Play()
+            if not isMenuOpen then return end
             
-            local stroke = tabButton:FindFirstChild("UIStroke")
-            if stroke then
-                local strokeTween = TweenService:Create(stroke, TweenInfo.new(0.15), {
-                    Color = Color3.fromRGB(50, 50, 50),
-                    Thickness = 2.5
-                })
-                strokeTween:Play()
+            local activeTab = nil
+            for tName, tButton in pairs(tabButtons) do
+                if tButton.BackgroundColor3 == Color3.fromRGB(40, 40, 40) then
+                    activeTab = tName
+                    break
+                end
             end
-        end)
-        
-        tabButton.MouseButton1Down:Connect(function()
-            local pressTween = TweenService:Create(tabButton, TweenInfo.new(0.1), {
-                BackgroundColor3 = Color3.fromRGB(15, 15, 15),
-                Size = UDim2.new(1, -2, 0, 53)
-            })
-            pressTween:Play()
-        end)
-        
-        tabButton.MouseButton1Up:Connect(function()
-            local releaseTween = TweenService:Create(tabButton, TweenInfo.new(0.1), {
-                BackgroundColor3 = Color3.fromRGB(35, 35, 35),
-                Size = UDim2.new(1, 2, 0, 57)
-            })
-            releaseTween:Play()
+            
+            if tabName ~= activeTab then
+                TweenService:Create(tabButton, TweenInfo.new(0.15), {
+                    BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+                    TextColor3 = Color3.fromRGB(180, 180, 180)
+                }):Play()
+            end
         end)
     end
     
-    -- Обработка клавиши M для закрытия меню
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         
         if input.KeyCode == Enum.KeyCode.M then
-            -- Проверяем, находится ли пользователь в текстовом поле
-            local textBoxFocused = false
-            
             local mousePos = UserInputService:GetMouseLocation()
             local guis = CoreGui:GetGuiObjectsAtPosition(mousePos.X, mousePos.Y)
             
+            local textBoxFocused = false
             for _, gui in ipairs(guis) do
                 if gui:IsA("TextBox") and gui:IsFocused() then
                     textBoxFocused = true
@@ -716,8 +876,70 @@ if not isMobile and UserInputService.MouseEnabled then
             end
         end
         
-        -- ESC для закрытия меню
         if input.KeyCode == Enum.KeyCode.Escape and isMenuOpen then
+            hideMenu()
+        end
+    end)
+end
+
+-- Обработчики событий для мобильных устройств
+if isMobile then
+    openButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            toggleMenu()
+        end
+    end)
+    
+    openButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            TweenService:Create(openButton, TweenInfo.new(0.1), {
+                BackgroundTransparency = 0.6,
+                Size = UDim2.new(0, 65, 0, 65)
+            }):Play()
+            
+            TweenService:Create(openButtonStroke, TweenInfo.new(0.1), {
+                Thickness = 2
+            }):Play()
+        end
+    end)
+    
+    openButton.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            TweenService:Create(openButton, TweenInfo.new(0.1), {
+                BackgroundTransparency = 0.4,
+                Size = UDim2.new(0, 70, 0, 70)
+            }):Play()
+            
+            TweenService:Create(openButtonStroke, TweenInfo.new(0.1), {
+                Thickness = 3
+            }):Play()
+        end
+    end)
+    
+    closeButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            TweenService:Create(closeButton, TweenInfo.new(0.1), {
+                BackgroundColor3 = Color3.fromRGB(35, 35, 35),
+                Size = UDim2.new(0, 38, 0, 38)
+            }):Play()
+            
+            TweenService:Create(closeButtonStroke, TweenInfo.new(0.1), {
+                Color = Color3.fromRGB(100, 100, 100)
+            }):Play()
+        end
+    end)
+    
+    closeButton.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            TweenService:Create(closeButton, TweenInfo.new(0.1), {
+                BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+                Size = UDim2.new(0, 40, 0, 40)
+            }):Play()
+            
+            TweenService:Create(closeButtonStroke, TweenInfo.new(0.1), {
+                Color = Color3.fromRGB(60, 60, 60)
+            }):Play()
+            
             hideMenu()
         end
     end)
@@ -725,7 +947,7 @@ end
 
 -- Меню автоматически открывается при запуске
 task.spawn(function()
-    task.wait(1) -- Небольшая задержка для загрузки
+    task.wait(1)
     showMenu()
 end)
 
