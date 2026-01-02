@@ -55,21 +55,21 @@ end
 
 local function loadFromRepo()
     local success, result = pcall(function()
-        local repoUrl = "https://raw.githubusercontent.com/DevShiftTeam/DevShift/main/"
+        -- Список необходимых файлов
+        local scripts = {"DevShift.lua", "OtherModule.lua"}
         
-        local function loadScript(scriptName)
-            local url = repoUrl .. scriptName
-            local content = game:HttpGet(url, true)
+        for _, scriptName in ipairs(scripts) do
+            local content = game:HttpGet(scriptName, true)
             local func, err = loadstring(content)
             if func then
-                return pcall(func)
+                local scriptSuccess, scriptErr = pcall(func)
+                if not scriptSuccess then
+                    warn("Ошибка в " .. scriptName .. ": " .. tostring(scriptErr))
+                end
             else
-                return false, err
+                warn("Ошибка загрузки " .. scriptName .. ": " .. tostring(err))
             end
         end
-        
-        loadScript("Keyless.lua")
-        loadScript("DevShift.lua")
         
         return true
     end)
