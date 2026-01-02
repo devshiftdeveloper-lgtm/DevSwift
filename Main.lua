@@ -19,18 +19,16 @@ function MainModule.ShowNotification(title, text, duration)
     task.spawn(function()
         local gui = Instance.new("ScreenGui")
         gui.Name = "NotificationGui"
-        gui.ResetOnSpawn = false
         gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-        gui.DisplayOrder = 1000
+        gui.ResetOnSpawn = false
         gui.Parent = game:GetService("CoreGui")
 
         local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 300, 0, 0)
-        frame.Position = UDim2.new(1, -320, 0, 50)
+        frame.Size = UDim2.new(0, 350, 0, 0)
+        frame.AutomaticSize = Enum.AutomaticSize.Y
+        frame.Position = UDim2.new(1, -370, 0, 50)
         frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         frame.BorderSizePixel = 0
-        frame.ClipsDescendants = true
-        frame.ZIndex = 1001
         frame.Parent = gui
 
         local corner = Instance.new("UICorner")
@@ -40,47 +38,37 @@ function MainModule.ShowNotification(title, text, duration)
         local stroke = Instance.new("UIStroke")
         stroke.Color = Color3.fromRGB(60, 60, 60)
         stroke.Thickness = 2
-        stroke.ZIndex = 1001
         stroke.Parent = frame
 
         local titleLabel = Instance.new("TextLabel")
-        titleLabel.Size = UDim2.new(1, -20, 0, 30)
+        titleLabel.Size = UDim2.new(1, -20, 0, 25)
         titleLabel.Position = UDim2.new(0, 10, 0, 10)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = title
         titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-        titleLabel.TextSize = 16
+        titleLabel.TextSize = 18
         titleLabel.Font = Enum.Font.GothamBold
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-        titleLabel.ZIndex = 1002
         titleLabel.Parent = frame
 
         local textLabel = Instance.new("TextLabel")
-        textLabel.Size = UDim2.new(1, -20, 1, -45)
-        textLabel.Position = UDim2.new(0, 10, 0, 45)
+        textLabel.Size = UDim2.new(1, -20, 0, 0)
+        textLabel.Position = UDim2.new(0, 10, 0, 35)
         textLabel.BackgroundTransparency = 1
         textLabel.Text = text
         textLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        textLabel.TextSize = 12
+        textLabel.TextSize = 14
         textLabel.Font = Enum.Font.Gotham
         textLabel.TextXAlignment = Enum.TextXAlignment.Left
         textLabel.TextYAlignment = Enum.TextYAlignment.Top
         textLabel.TextWrapped = true
-        textLabel.ZIndex = 1002
+        textLabel.AutomaticSize = Enum.AutomaticSize.Y
         textLabel.Parent = frame
 
-        textLabel:GetPropertyChangedSignal("TextBounds"):Connect(function()
-            local textHeight = textLabel.TextBounds.Y + 55
-            frame.Size = UDim2.new(0, 300, 0, math.min(textHeight, 150))
-            TweenService:Create(frame, TweenInfo.new(0.3), {
-                Position = UDim2.new(1, -320, 0, 50)
-            }):Play()
-        end)
+        frame.Size = UDim2.new(0, 350, 0, textLabel.TextBounds.Y + 50)
 
-        local textHeight = textLabel.TextBounds.Y + 55
-        frame.Size = UDim2.new(0, 300, 0, math.min(textHeight, 150))
         TweenService:Create(frame, TweenInfo.new(0.3), {
-            Position = UDim2.new(1, -320, 0, 50)
+            Position = UDim2.new(1, -370, 0, 50)
         }):Play()
 
         task.wait(duration)
@@ -150,8 +138,20 @@ local function IsSeeker(player)
     return player:GetAttribute("IsHunter") == true
 end
 
+local function IsGameActive(gameName)
+    local values = Workspace:FindFirstChild("Values")
+    if not values then return false end
+    local currentGame = values:FindFirstChild("CurrentGame")
+    if not currentGame then return false end
+    return currentGame.Value == gameName
+end
+
 function MainModule.RLGL_TP_ToStart()
     task.spawn(function()
+        if not IsGameActive("RedLightGreenLight") then
+            MainModule.ShowNotification("RLGL", "Game not active", 2)
+            return
+        end
         local character = GetCharacter()
         if character and character:FindFirstChild("HumanoidRootPart") then
             character.HumanoidRootPart.CFrame = CFrame.new(-55.3, 1023.1, -545.8)
@@ -162,6 +162,10 @@ end
 
 function MainModule.RLGL_TP_ToEnd()
     task.spawn(function()
+        if not IsGameActive("RedLightGreenLight") then
+            MainModule.ShowNotification("RLGL", "Game not active", 2)
+            return
+        end
         local character = GetCharacter()
         if character and character:FindFirstChild("HumanoidRootPart") then
             character.HumanoidRootPart.CFrame = CFrame.new(-214.4, 1023.1, 146.7)
@@ -172,6 +176,10 @@ end
 
 function MainModule.Dalgona_Complete()
     task.spawn(function()
+        if not IsGameActive("Dalgona") then
+            MainModule.ShowNotification("Dalgona", "Game not active", 2)
+            return
+        end
         local DalgonaClientModule = ReplicatedStorage:FindFirstChild("Modules") and
                                     ReplicatedStorage.Modules:FindFirstChild("Games") and
                                     ReplicatedStorage.Modules.Games:FindFirstChild("DalgonaClient")
@@ -199,6 +207,10 @@ end
 
 function MainModule.Dalgona_FreeLighter()
     task.spawn(function()
+        if not IsGameActive("Dalgona") then
+            MainModule.ShowNotification("Dalgona", "Game not active", 2)
+            return
+        end
         LocalPlayer:SetAttribute("HasLighter", true)
         MainModule.ShowNotification("Dalgona", "Lighter Unlocked", 2)
     end)
@@ -210,6 +222,10 @@ MainModule.HNS = {
 }
 
 function MainModule.ToggleHNSInfinityStamina(enabled)
+    if not IsGameActive("HideAndSeek") then
+        MainModule.ShowNotification("HNS", "Game not active", 2)
+        return
+    end
     MainModule.HNS.InfinityStaminaEnabled = enabled
     
     if MainModule.HNS.InfinityStaminaConnection then
@@ -289,6 +305,10 @@ MainModule.SpikesKillFeature = {
 }
 
 function MainModule.ToggleSpikesKill(enabled)
+    if not IsGameActive("HideAndSeek") then
+        MainModule.ShowNotification("Spikes Kill", "Game not active", 2)
+        return
+    end
     MainModule.SpikesKillFeature.Enabled = enabled
     
     if MainModule.SpikesKillFeature.AnimationConnection then
@@ -548,6 +568,11 @@ local function processGonggiStones()
 end
 
 function MainModule.ToggleAutoGonggi(enabled)
+    if not IsGameActive("Gonggi") then
+        MainModule.ShowNotification("Auto Gonggi", "Game not active", 2)
+        return
+    end
+    
     if MainModule.AutoGonggi.Enabled == enabled then
         return MainModule.AutoGonggi.Enabled
     end
@@ -856,6 +881,11 @@ local function setupInstantReactionMonitor()
 end
 
 function MainModule.ToggleAutoDodge(enabled)
+    if not IsGameActive("HideAndSeek") then
+        MainModule.ShowNotification("Auto Dodge", "Game not active", 2)
+        return
+    end
+    
     MainModule.AutoDodge.Enabled = false
     
     for _, conn in pairs(MainModule.AutoDodge.Connections) do
@@ -895,6 +925,10 @@ end
 
 function MainModule.TeleportToHider()
     task.spawn(function()
+        if not IsGameActive("HideAndSeek") then
+            MainModule.ShowNotification("HNS", "Game not active", 2)
+            return
+        end
         local character = GetCharacter()
         if not character or not character:FindFirstChild("HumanoidRootPart") then
             MainModule.ShowNotification("HNS", "Character not found", 2)
@@ -931,12 +965,17 @@ function MainModule.TeleportToHider()
 end
 
 MainModule.TugOfWar = {
-    AutoPull = false,
+    AntiMissEnabled = false,
     Connection = nil
 }
 
-function MainModule.AntiMiss(enabled)
-    MainModule.TugOfWar.AutoPull = enabled
+function MainModule.ToggleAntiMiss(enabled)
+    if not IsGameActive("TugOfWar") then
+        MainModule.ShowNotification("Anti Miss", "Game not active", 2)
+        return
+    end
+    
+    MainModule.TugOfWar.AntiMissEnabled = enabled
     
     if MainModule.TugOfWar.Connection then
         MainModule.TugOfWar.Connection:Disconnect()
@@ -945,7 +984,7 @@ function MainModule.AntiMiss(enabled)
 
     if enabled then
         MainModule.TugOfWar.Connection = RunService.Heartbeat:Connect(function()
-            if not MainModule.TugOfWar.AutoPull then return end
+            if not MainModule.TugOfWar.AntiMissEnabled then return end
             
             local player = Players.LocalPlayer
             local gui = player:FindFirstChild("PlayerGui")
@@ -982,75 +1021,84 @@ function MainModule.AntiMiss(enabled)
             
             task.wait(0.01)
         end)
+        MainModule.ShowNotification("Anti Miss", "Enabled", 2)
+    else
+        MainModule.ShowNotification("Anti Miss", "Disabled", 2)
     end
 end
 
 MainModule.GlassBridge = {
     AntiBreakEnabled = false,
-    AntiBreakConnection = nil,
-    GlassESPEnabled = false,
-    GlassESPConnections = {},
-    GlassESPConnection2 = nil
+    GlassAntiBreakConnection = nil,
+    SafetyPlatforms = {}
 }
 
-function MainModule.GlassBridgeAntiBreak(state)
-    MainModule.GlassBridge.AntiBreakEnabled = state
-    if not state then
-        if MainModule.GlassBridge.AntiBreakConnection then
-            MainModule.GlassBridge.AntiBreakConnection:Disconnect()
-            MainModule.GlassBridge.AntiBreakConnection = nil
-        end
+function MainModule.ToggleAntiBreak(enabled)
+    if not IsGameActive("GlassBridge") then
+        MainModule.ShowNotification("Anti Break", "Game not active", 2)
         return
     end
     
-    local function createSafetyPlatforms()
-        local GlassHolder = workspace:FindFirstChild("GlassBridge") and workspace.GlassBridge:FindFirstChild("GlassHolder")
-        if not GlassHolder then return end
-        
-        for _, lane in pairs(GlassHolder:GetChildren()) do
-            for _, glassModel in pairs(lane:GetChildren()) do
-                if glassModel:IsA("Model") and glassModel.PrimaryPart then
-                    if not glassModel:FindFirstChild("SafetyPlatform") then
-                        local part = glassModel.PrimaryPart
-                        local platformPosition = Vector3.new(
-                            part.Position.X,
-                            part.Position.Y - 6,
-                            part.Position.Z
-                        )
-                        
-                        local platform = Instance.new("Part")
-                        platform.Name = "SafetyPlatform"
-                        platform.Size = Vector3.new(10, 1, 10)
-                        platform.Position = platformPosition
-                        platform.Anchored = true
-                        platform.CanCollide = true
-                        platform.Transparency = 0.5
-                        platform.Color = Color3.fromRGB(255, 255, 255)
-                        platform.Material = Enum.Material.SmoothPlastic
-                        platform.Parent = glassModel
-                    end
-                end
-            end
-        end
+    MainModule.GlassBridge.AntiBreakEnabled = enabled
+    
+    if MainModule.GlassBridge.GlassAntiBreakConnection then
+        MainModule.GlassBridge.GlassAntiBreakConnection:Disconnect()
+        MainModule.GlassBridge.GlassAntiBreakConnection = nil
     end
     
-    MainModule.GlassBridge.AntiBreakConnection = RunService.Heartbeat:Connect(function()
-        local GlassHolder = workspace:FindFirstChild("GlassBridge") and workspace.GlassBridge:FindFirstChild("GlassHolder")
-        if not GlassHolder then return end
-        
-        createSafetyPlatforms()
-        
-        for _, v in pairs(GlassHolder:GetChildren()) do
-            for _, j in pairs(v:GetChildren()) do
-                if j:IsA("Model") and j.PrimaryPart then
-                    if j.PrimaryPart:GetAttribute("exploitingisevil") ~= nil then
-                        j.PrimaryPart:SetAttribute("exploitingisevil", nil)
+    for _, platform in pairs(MainModule.GlassBridge.SafetyPlatforms) do
+        if platform then
+            platform:Destroy()
+        end
+    end
+    MainModule.GlassBridge.SafetyPlatforms = {}
+    
+    if enabled then
+        MainModule.GlassBridge.GlassAntiBreakConnection = RunService.Heartbeat:Connect(function()
+            if not MainModule.GlassBridge.AntiBreakEnabled then return end
+            
+            local GlassHolder = workspace:FindFirstChild("GlassBridge") and workspace.GlassBridge:FindFirstChild("GlassHolder")
+            if not GlassHolder then return end
+            
+            for _, lane in pairs(GlassHolder:GetChildren()) do
+                for _, glassModel in pairs(lane:GetChildren()) do
+                    if glassModel:IsA("Model") and glassModel.PrimaryPart then
+                        if glassModel.PrimaryPart:GetAttribute("exploitingisevil") ~= nil then
+                            glassModel.PrimaryPart:SetAttribute("exploitingisevil", nil)
+                        end
+                        
+                        if not MainModule.GlassBridge.SafetyPlatforms[glassModel] then
+                            local platform = Instance.new("Part")
+                            platform.Name = "GlassSafetyPlatform"
+                            platform.Size = Vector3.new(20, 1, 20)
+                            platform.Position = glassModel.PrimaryPart.Position + Vector3.new(0, -6, 0)
+                            platform.Anchored = true
+                            platform.CanCollide = true
+                            platform.Transparency = 0.3
+                            platform.Color = Color3.fromRGB(255, 255, 255)
+                            platform.Material = Enum.Material.SmoothPlastic
+                            
+                            local corner = Instance.new("UICorner")
+                            corner.CornerRadius = UDim.new(0, 4)
+                            corner.Parent = platform
+                            
+                            platform.Parent = workspace
+                            MainModule.GlassBridge.SafetyPlatforms[glassModel] = platform
+                        end
                     end
                 end
             end
-        end
-    end)
+        end)
+        MainModule.ShowNotification("Anti Break", "Enabled", 2)
+    else
+        MainModule.ShowNotification("Anti Break", "Disabled", 2)
+    end
 end
+
+MainModule.GlassESP = {
+    Enabled = false,
+    GlassESPConnections = {}
+}
 
 local function updateGlassESP()
     if not workspace:FindFirstChild("GlassBridge") then return end
@@ -1115,43 +1163,52 @@ local function clearGlassESP()
     end
 end
 
-function MainModule.EnableGlassESP(state)
-    MainModule.GlassBridge.GlassESPEnabled = state
-    
-    if state then
-        updateGlassESP()
-        
-        MainModule.GlassBridge.GlassESPConnections["workspace"] = workspace.ChildAdded:Connect(function(child)
-            if child.Name == "GlassBridge" then
-                task.wait(1)
-                updateGlassESP()
-            end
-        end)
-        
-        MainModule.GlassBridge.GlassESPConnection2 = RunService.Heartbeat:Connect(function()
-            if MainModule.GlassBridge.GlassESPEnabled then
-                updateGlassESP()
-            end
-        end)
-    else
-        clearGlassESP()
-        
-        for name, conn in pairs(MainModule.GlassBridge.GlassESPConnections) do
-            if conn then
-                conn:Disconnect()
-            end
-        end
-        MainModule.GlassBridge.GlassESPConnections = {}
-        
-        if MainModule.GlassBridge.GlassESPConnection2 then
-            MainModule.GlassBridge.GlassESPConnection2:Disconnect()
-            MainModule.GlassBridge.GlassESPConnection2 = nil
-        end
+function MainModule.ToggleGlassESP(enabled)
+    if not IsGameActive("GlassBridge") then
+        MainModule.ShowNotification("Glass ESP", "Game not active", 2)
+        return
     end
+    
+    MainModule.GlassESP.Enabled = enabled
+    
+    if MainModule.GlassESP.Enabled then
+        for _, conn in pairs(MainModule.GlassESP.GlassESPConnections) do
+            if conn then
+                pcall(function() conn:Disconnect() end)
+            end
+        end
+        MainModule.GlassESP.GlassESPConnections = {}
+        
+        clearGlassESP()
+        return
+    end
+    
+    updateGlassESP()
+    
+    local conn1 = workspace.ChildAdded:Connect(function(child)
+        if child.Name == "GlassBridge" then
+            task.wait(1)
+            updateGlassESP()
+        end
+    end)
+    table.insert(MainModule.GlassESP.GlassESPConnections, conn1)
+    
+    local conn2 = RunService.Heartbeat:Connect(function()
+        if MainModule.GlassESP.Enabled then
+            updateGlassESP()
+        end
+    end)
+    table.insert(MainModule.GlassESP.GlassESPConnections, conn2)
+    
+    MainModule.ShowNotification("Glass ESP", "Enabled", 2)
 end
 
-function MainModule.GlassBridgeTeleportToEnd()
+function MainModule.GlassBridge_TP_ToEnd()
     task.spawn(function()
+        if not IsGameActive("GlassBridge") then
+            MainModule.ShowNotification("Glass Bridge", "Game not active", 2)
+            return
+        end
         local character = GetCharacter()
         if character and character:FindFirstChild("HumanoidRootPart") then
             character.HumanoidRootPart.CFrame = CFrame.new(-196.372467, 522.192139, -1534.20984)
@@ -1316,7 +1373,7 @@ local function setupAnimationTrackerMingleVoidKill()
                             connection:Disconnect()
                         end
                     end
-                })
+                end)
                 
                 table.insert(MainModule.MingleVoidKill.Connections, connection)
             end
@@ -1387,6 +1444,11 @@ local function setupAnimationTrackerMingleVoidKill()
 end
 
 function MainModule.ToggleMingleVoidKill(enabled)
+    if not IsGameActive("Mingle") then
+        MainModule.ShowNotification("Void Kill", "Game not active", 2)
+        return
+    end
+    
     MainModule.MingleVoidKill.Enabled = false
     
     for _, conn in pairs(MainModule.MingleVoidKill.Connections) do
@@ -1410,25 +1472,10 @@ function MainModule.ToggleMingleVoidKill(enabled)
     if enabled then
         MainModule.MingleVoidKill.Enabled = true
         setupAnimationTrackerMingleVoidKill()
+        MainModule.ShowNotification("Void Kill", "Enabled", 2)
+    else
+        MainModule.ShowNotification("Void Kill", "Disabled", 2)
     end
-end
-
-local function isGameActive(gameName)
-    local values = workspace:FindFirstChild("Values")
-    if not values then return false end
-    
-    local currentGame = values:FindFirstChild("CurrentGame")
-    if not currentGame then return false end
-    
-    return currentGame.Value == gameName
-end
-
-function MainModule.checkGameActive(gameName, funcName)
-    if not isGameActive(gameName) then
-        MainModule.ShowNotification(funcName, gameName .. " is not active", 3)
-        return false
-    end
-    return true
 end
 
 return MainModule
