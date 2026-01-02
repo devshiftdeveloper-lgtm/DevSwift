@@ -6,13 +6,76 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local Debris = game:GetService("Debris")
-local CollectionService = game:GetService("CollectionService")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     Character = newChar
 end)
+
+function MainModule.ShowNotification(title, text, duration)
+    duration = duration or 5
+    task.spawn(function()
+        local gui = Instance.new("ScreenGui")
+        gui.Name = "NotificationGui"
+        gui.ResetOnSpawn = false
+        gui.Parent = game:GetService("CoreGui")
+
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0, 350, 0, 80)
+        frame.Position = UDim2.new(1, -370, 0, 50)
+        frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        frame.BorderSizePixel = 0
+        frame.Parent = gui
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = frame
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(60, 60, 60)
+        stroke.Thickness = 2
+        stroke.Parent = frame
+
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, -20, 0, 25)
+        titleLabel.Position = UDim2.new(0, 10, 0, 10)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = title
+        titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+        titleLabel.TextSize = 18
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.Parent = frame
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, -20, 1, -40)
+        textLabel.Position = UDim2.new(0, 10, 0, 35)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = text
+        textLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        textLabel.TextSize = 14
+        textLabel.Font = Enum.Font.Gotham
+        textLabel.TextXAlignment = Enum.TextXAlignment.Left
+        textLabel.TextYAlignment = Enum.TextYAlignment.Top
+        textLabel.TextWrapped = true
+        textLabel.Parent = frame
+
+        TweenService:Create(frame, TweenInfo.new(0.3), {
+            Position = UDim2.new(1, -370, 0, 50)
+        }):Play()
+
+        task.wait(duration)
+
+        TweenService:Create(frame, TweenInfo.new(0.3), {
+            Position = UDim2.new(1, 400, 0, 50)
+        }):Play()
+
+        task.wait(0.3)
+        gui:Destroy()
+    end)
+end
 
 local function SafeDestroy(obj)
     if obj and obj.Parent then
@@ -191,7 +254,7 @@ local function KillEnemy(enemyName)
         }
         local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("FiredGunClient")
         remote:FireServer(unpack(args))
-    end)
+    end
 end
 
 local function sendGameAction(guid, action, data)
@@ -253,41 +316,6 @@ local function getActiveGameId(minigameName)
     end
     
     return nil
-end
-
-function MainModule.RLGL_TP_ToStart()
-    if Character and Character:FindFirstChild("HumanoidRootPart") then
-        Character.HumanoidRootPart.CFrame = CFrame.new(-55.3, 1023.1, -545.8)
-    end
-end
-
-function MainModule.RLGL_TP_ToEnd()
-    if Character and Character:FindFirstChild("HumanoidRootPart") then
-        Character.HumanoidRootPart.CFrame = CFrame.new(-214.4, 1023.1, 146.7)
-    end
-end
-
-function MainModule.Dalgona_Complete()
-    task.spawn(function()
-        local DalgonaClientModule = ReplicatedStorage:FindFirstChild("Modules") and
-                                    ReplicatedStorage.Modules:FindFirstChild("Games") and
-                                    ReplicatedStorage.Modules.Games:FindFirstChild("DalgonaClient")
-        if not DalgonaClientModule then return end
-        
-        for _, func in pairs(debug.getregistry()) do
-            if typeof(func) == "function" and islclosure(func) then
-                local info = debug.getinfo(func)
-                if info.nups == 76 then
-                    debug.setupvalue(func, 33, 9999)
-                    debug.setupvalue(func, 34, 9999)
-                end
-            end
-        end
-    end)
-end
-
-function MainModule.Dalgona_FreeLighter()
-    LocalPlayer:SetAttribute("HasLighter", true)
 end
 
 MainModule.AutoGonggi = {
@@ -421,7 +449,8 @@ local function processGonggiStones()
         end
     end
     
-    local stones = CollectionService:GetTagged("GonggiStone")
+    local collectionService = game:GetService("CollectionService")
+    local stones = collectionService:GetTagged("GonggiStone")
     
     for _, stone in ipairs(stones) do
         if stone:IsA("BasePart") then
@@ -493,7 +522,8 @@ function MainModule.ToggleAutoGonggi(enabled)
                 end
             end
             
-            local stones = CollectionService:GetTagged("GonggiStone")
+            local collectionService = game:GetService("CollectionService")
+            local stones = collectionService:GetTagged("GonggiStone")
             for _, stone in ipairs(stones) do
                 if stone:IsA("BasePart") and stone:FindFirstChild("AutoHighlight") then
                     stone.AutoHighlight:Destroy()
@@ -507,6 +537,67 @@ end
 
 function MainModule.ForceStopAutoGonggi()
     MainModule.ToggleAutoGonggi(false)
+end
+
+function MainModule.RLGL_TP_ToStart()
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        Character.HumanoidRootPart.CFrame = CFrame.new(-55.3, 1023.1, -545.8)
+    end
+end
+
+function MainModule.RLGL_TP_ToEnd()
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        Character.HumanoidRootPart.CFrame = CFrame.new(-214.4, 1023.1, 146.7)
+    end
+end
+
+function MainModule.Dalgona_Complete()
+    task.spawn(function()
+        local DalgonaClientModule = ReplicatedStorage:FindFirstChild("Modules") and
+                                    ReplicatedStorage.Modules:FindFirstChild("Games") and
+                                    ReplicatedStorage.Modules.Games:FindFirstChild("DalgonaClient")
+        if not DalgonaClientModule then return end
+        
+        for _, func in pairs(debug.getregistry()) do
+            if typeof(func) == "function" and islclosure(func) then
+                local info = debug.getinfo(func)
+                if info.nups == 76 then
+                    debug.setupvalue(func, 33, 9999)
+                    debug.setupvalue(func, 34, 9999)
+                end
+            end
+        end
+    end)
+end
+
+function MainModule.Dalgona_FreeLighter()
+    LocalPlayer:SetAttribute("HasLighter", true)
+end
+
+MainModule.HNS = {
+    InfinityStaminaEnabled = false,
+    InfinityStaminaConnection = nil
+}
+
+function MainModule.ToggleHNSInfinityStamina(enabled)
+    MainModule.HNS.InfinityStaminaEnabled = enabled
+    if MainModule.HNS.InfinityStaminaConnection then
+        MainModule.HNS.InfinityStaminaConnection:Disconnect()
+        MainModule.HNS.InfinityStaminaConnection = nil
+    end
+    if enabled then
+        MainModule.HNS.InfinityStaminaConnection = RunService.Heartbeat:Connect(function()
+            if not MainModule.HNS.InfinityStaminaEnabled then return end
+            task.spawn(function()
+                if LocalPlayer.Character then
+                    local stamina = LocalPlayer.Character:FindFirstChild("StaminaVal")
+                    if stamina then
+                        stamina.Value = 100
+                    end
+                end
+            end)
+        end)
+    end
 end
 
 function MainModule.CheckKnifeInInventory()
@@ -562,82 +653,11 @@ MainModule.SpikesKillFeature = {
     NoKnifeTimeout = 2
 }
 
-local function ShowNotification(title, message, duration)
-    local CoreGui = game:GetService("CoreGui")
-    if CoreGui:FindFirstChild("DevShiftNotifications") then
-        SafeDestroy(CoreGui:FindFirstChild("DevShiftNotifications"))
-    end
-    
-    local notifications = Instance.new("ScreenGui")
-    notifications.Name = "DevShiftNotifications"
-    notifications.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    notifications.Parent = CoreGui
-    
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(0, 300, 0, 80)
-    container.Position = UDim2.new(0, 20, 0, 20)
-    container.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    container.BackgroundTransparency = 0.2
-    container.BorderSizePixel = 0
-    container.Parent = notifications
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = container
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(60, 60, 60)
-    stroke.Thickness = 2
-    stroke.Parent = container
-    
-    local glow = Instance.new("ImageLabel")
-    glow.Size = UDim2.new(1, 12, 1, 12)
-    glow.Position = UDim2.new(0, -6, 0, -6)
-    glow.BackgroundTransparency = 1
-    glow.Image = "rbxassetid://5554236805"
-    glow.ImageColor3 = Color3.fromRGB(30, 30, 30)
-    glow.ImageTransparency = 0.5
-    glow.ScaleType = Enum.ScaleType.Slice
-    glow.SliceCenter = Rect.new(23, 23, 277, 277)
-    glow.Parent = container
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -20, 0, 25)
-    titleLabel.Position = UDim2.new(0, 10, 0, 10)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = title
-    titleLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    titleLabel.TextSize = 16
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = container
-    
-    local messageLabel = Instance.new("TextLabel")
-    messageLabel.Size = UDim2.new(1, -20, 1, -45)
-    messageLabel.Position = UDim2.new(0, 10, 0, 35)
-    messageLabel.BackgroundTransparency = 1
-    messageLabel.Text = message
-    messageLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-    messageLabel.TextSize = 14
-    messageLabel.Font = Enum.Font.Gotham
-    messageLabel.TextXAlignment = Enum.TextXAlignment.Left
-    messageLabel.TextYAlignment = Enum.TextYAlignment.Top
-    messageLabel.TextWrapped = true
-    messageLabel.Parent = container
-    
-    task.spawn(function()
-        for i = 1, duration do
-            task.wait(1)
-        end
-        SafeDestroy(notifications)
-    end)
-end
-
 function MainModule.ToggleSpikesKill(enabled)
     if enabled then
         local hasKnife = MainModule.CheckKnifeInInventory()
         if not hasKnife then
-            ShowNotification("Spikes Kill", "Knife not found!", 3)
+            MainModule.ShowNotification("Spikes Kill", "Knife not found!", 3)
             MainModule.SpikesKillFeature.Enabled = false
             return
         end
@@ -837,7 +857,7 @@ function MainModule.ToggleSpikesKill(enabled)
             MainModule.SpikesKillFeature.NoKnifeTimer = MainModule.SpikesKillFeature.NoKnifeTimer + MainModule.SpikesKillFeature.KnifeCheckCooldown
             
             if MainModule.SpikesKillFeature.NoKnifeTimer >= MainModule.SpikesKillFeature.NoKnifeTimeout then
-                ShowNotification("Spikes Kill", "Knife not found!", 3)
+                MainModule.ShowNotification("Spikes Kill", "Knife not found!", 3)
                 MainModule.ToggleSpikesKill(false)
             end
         end
@@ -871,32 +891,6 @@ function MainModule.DisableSpikes(remove)
     end)
 end
 
-MainModule.HNS = {
-    InfinityStaminaEnabled = false,
-    InfinityStaminaConnection = nil
-}
-
-function MainModule.ToggleHNSInfinityStamina(enabled)
-    MainModule.HNS.InfinityStaminaEnabled = enabled
-    if MainModule.HNS.InfinityStaminaConnection then
-        MainModule.HNS.InfinityStaminaConnection:Disconnect()
-        MainModule.HNS.InfinityStaminaConnection = nil
-    end
-    if enabled then
-        MainModule.HNS.InfinityStaminaConnection = RunService.Heartbeat:Connect(function()
-            if not MainModule.HNS.InfinityStaminaEnabled then return end
-            task.spawn(function()
-                if LocalPlayer.Character then
-                    local stamina = LocalPlayer.Character:FindFirstChild("StaminaVal")
-                    if stamina then
-                        stamina.Value = 100
-                    end
-                end
-            end)
-        end)
-    end
-end
-
 MainModule.AutoDodge = {
     Enabled = false,
     AnimationIds = {
@@ -928,21 +922,383 @@ for _, id in ipairs(MainModule.AutoDodge.AnimationIds) do
     MainModule.AutoDodge.AnimationIdsSet[id] = true
 end
 
-function MainModule.TeleportToHider()
-    local localPlayer = Players.LocalPlayer
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= localPlayer and IsHider(player) then
-            local character = player.Character
-            if character and character:FindFirstChild("HumanoidRootPart") then
-                local localCharacter = localPlayer.Character
-                if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
-                    localCharacter.HumanoidRootPart.CFrame = character.HumanoidRootPart.CFrame
-                    return true
+local function setupRemoteHook()
+    local remote = nil
+    local rs = game:GetService("ReplicatedStorage")
+    
+    if rs:FindFirstChild("Remotes") then
+        remote = rs.Remotes:FindFirstChild("UsedTool")
+    end
+    
+    if not remote and rs:FindFirstChild("Events") then
+        remote = rs.Events:FindFirstChild("UsedTool")
+    end
+    
+    if not remote then
+        local function searchRemote(container)
+            for _, child in ipairs(container:GetChildren()) do
+                if child:IsA("RemoteEvent") and child.Name == "UsedTool" then
+                    return child
+                end
+                local found = searchRemote(child)
+                if found then return found end
+            end
+            return nil
+        end
+        remote = searchRemote(rs)
+    end
+    
+    if not remote then
+        return false
+    end
+    
+    MainModule.AutoDodge.Remote = remote
+    
+    if hookfunction then
+        MainModule.AutoDodge.OriginalFireServer = hookfunction(remote.FireServer, function(self, ...)
+            local args = {...}
+            
+            for i, arg in ipairs(args) do
+                if typeof(arg) == "Instance" and arg:IsA("Tool") then
+                    if arg.Name == "DODGE!" then
+                        MainModule.AutoDodge.CapturedCall = {
+                            args = {unpack(args)},
+                            timestamp = tick(),
+                            tool = arg,
+                            remote = self
+                        }
+                        MainModule.AutoDodge.LastCapturedCallTime = tick()
+                        break
+                    end
+                elseif typeof(arg) == "table" then
+                    for _, v in pairs(arg) do
+                        if typeof(v) == "Instance" and v:IsA("Tool") then
+                            if v.Name == "DODGE!" then
+                                MainModule.AutoDodge.CapturedCall = {
+                                    args = {unpack(args)},
+                                    timestamp = tick(),
+                                    tool = v,
+                                    remote = self
+                                }
+                                MainModule.AutoDodge.LastCapturedCallTime = tick()
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+            
+            return MainModule.AutoDodge.OriginalFireServer(self, ...)
+        end)
+    end
+    
+    return true
+end
+
+local function executeDodge()
+    if not MainModule.AutoDodge.Enabled then 
+        return false 
+    end
+    
+    local currentTime = tick()
+    local autoDodge = MainModule.AutoDodge
+    
+    if currentTime - autoDodge.LastDodgeTime < autoDodge.DodgeCooldown then
+        return false
+    end
+    
+    if not autoDodge.CapturedCall then
+        return false
+    end
+    
+    local player = game:GetService("Players").LocalPlayer
+    if not player then 
+        return false 
+    end
+    
+    local dodgeTool = nil
+    local character = player.Character
+    
+    if character then
+        dodgeTool = character:FindFirstChild("DODGE!")
+    end
+    
+    if not dodgeTool and player:FindFirstChild("Backpack") then
+        dodgeTool = player.Backpack:FindFirstChild("DODGE!")
+    end
+    
+    if not dodgeTool then
+        return false
+    end
+    
+    local modifiedArgs = {}
+    for i, arg in ipairs(autoDodge.CapturedCall.args) do
+        if typeof(arg) == "Instance" and arg:IsA("Tool") and arg.Name == "DODGE!" then
+            modifiedArgs[i] = dodgeTool
+        else
+            modifiedArgs[i] = arg
+        end
+    end
+    
+    autoDodge.LastDodgeTime = currentTime
+    
+    local success, err = pcall(function()
+        autoDodge.Remote:FireServer(unpack(modifiedArgs))
+    end)
+    
+    if success then
+        return true
+    else
+        task.spawn(function()
+            pcall(function()
+                autoDodge.Remote:FireServer(dodgeTool)
+            end)
+        end)
+        
+        return false
+    end
+end
+
+local function isInRadius(targetRoot, localRoot)
+    if not (targetRoot and localRoot) then
+        return false
+    end
+    
+    local pos1 = targetRoot.Position
+    local pos2 = localRoot.Position
+    
+    local dx = pos1.X - pos2.X
+    local dy = pos1.Y - pos2.Y
+    local dz = pos1.Z - pos2.Z
+    
+    local distanceSquared = dx*dx + dy*dy + dz*dz
+    return distanceSquared <= MainModule.AutoDodge.RangeSquared
+end
+
+local function isLookingAtPlayer(targetPlayer, localPlayer)
+    if not targetPlayer or not targetPlayer.Character then return false end
+    if not localPlayer or not localPlayer.Character then return false end
+    
+    local targetHead = targetPlayer.Character:FindFirstChild("Head")
+    local localRoot = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not (targetHead and localRoot) then return false end
+    
+    local directionToLocal = (localRoot.Position - targetHead.Position).Unit
+    local lookVector = targetHead.CFrame.LookVector
+    
+    local dot = directionToLocal:Dot(lookVector)
+    
+    return dot > -0.7
+end
+
+local function createInstantAnimationHandler(player)
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    
+    return function(track)
+        if not MainModule.AutoDodge.Enabled then return end
+        if player == LocalPlayer then return end
+        
+        local animId
+        if track and track.Animation then
+            animId = track.Animation.AnimationId
+        end
+        
+        if not animId then return end
+        if not MainModule.AutoDodge.AnimationIdsSet[animId] then
+            return
+        end
+        
+        local currentTime = tick()
+        if currentTime - MainModule.AutoDodge.LastDodgeTime < MainModule.AutoDodge.DodgeCooldown then
+            return
+        end
+        
+        if not LocalPlayer or not LocalPlayer.Character then return end
+        if not player or not player.Character then return end
+        
+        if not isLookingAtPlayer(player, LocalPlayer) then
+            return
+        end
+        
+        local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+        
+        if not (localRoot and targetRoot) then return end
+        
+        local diff = targetRoot.Position - localRoot.Position
+        local distanceSquared = diff.X * diff.X + diff.Y * diff.Y + diff.Z * diff.Z
+        
+        if distanceSquared > MainModule.AutoDodge.RangeSquared then
+            return
+        end
+        
+        executeDodge()
+    end
+end
+
+local function setupInstantPlayerTracking(player)
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    if player == LocalPlayer then return end
+    
+    local function setupCharacter(character)
+        if not character or not MainModule.AutoDodge.Enabled then return end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        if not humanoid then
+            return
+        end
+        
+        local handler = createInstantAnimationHandler(player)
+        local conn = humanoid.AnimationPlayed:Connect(handler)
+        
+        if not MainModule.AutoDodge.TrackedPlayers[player.Name] then
+            MainModule.AutoDodge.TrackedPlayers[player.Name] = {}
+        end
+        table.insert(MainModule.AutoDodge.TrackedPlayers[player.Name], conn)
+        table.insert(MainModule.AutoDodge.Connections, conn)
+    end
+    
+    if player.Character then
+        setupCharacter(player.Character)
+    end
+    
+    local charConn = player.CharacterAdded:Connect(function(character)
+        if not MainModule.AutoDodge.Enabled then return end
+        
+        if MainModule.AutoDodge.TrackedPlayers[player.Name] then
+            for _, conn in pairs(MainModule.AutoDodge.TrackedPlayers[player.Name]) do
+                pcall(function() conn:Disconnect() end)
+            end
+            MainModule.AutoDodge.TrackedPlayers[player.Name] = {}
+        end
+        
+        setupCharacter(character)
+    end)
+    
+    table.insert(MainModule.AutoDodge.Connections, charConn)
+end
+
+local function setupInstantReactionMonitor()
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local LocalPlayer = Players.LocalPlayer
+    
+    local function instantCheck()
+        if not MainModule.AutoDodge.Enabled then return end
+        if not LocalPlayer or not LocalPlayer.Character then return end
+        
+        local currentTime = tick()
+        if currentTime - MainModule.AutoDodge.LastDodgeTime < MainModule.AutoDodge.DodgeCooldown then
+            return
+        end
+        
+        local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not localRoot then return end
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player == LocalPlayer then continue end
+            if not player.Character then continue end
+            
+            if not isLookingAtPlayer(player, LocalPlayer) then
+                continue
+            end
+            
+            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+            if not targetRoot then continue end
+            
+            local diff = targetRoot.Position - localRoot.Position
+            local distanceSquared = diff.X * diff.X + diff.Y * diff.Y + diff.Z * diff.Z
+            
+            if distanceSquared > MainModule.AutoDodge.RangeSquared then
+                continue
+            end
+            
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if not humanoid then continue end
+            
+            for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                if track and track.Animation and track.IsPlaying then
+                    local animId = track.Animation.AnimationId
+                    if MainModule.AutoDodge.AnimationIdsSet[animId] then
+                        executeDodge()
+                        return
+                    end
                 end
             end
         end
     end
-    return false
+    
+    local renderConn = RunService.RenderStepped:Connect(instantCheck)
+    table.insert(MainModule.AutoDodge.Connections, renderConn)
+end
+
+function MainModule.ToggleAutoDodge(enabled)
+    MainModule.AutoDodge.Enabled = false
+    
+    for _, conn in pairs(MainModule.AutoDodge.Connections) do
+        if conn then
+            pcall(function() conn:Disconnect() end)
+        end
+    end
+    
+    MainModule.AutoDodge.Connections = {}
+    MainModule.AutoDodge.TrackedPlayers = {}
+    MainModule.AutoDodge.LastDodgeTime = 0
+    
+    if enabled then
+        MainModule.AutoDodge.Enabled = true
+        
+        local Players = game:GetService("Players")
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            setupInstantPlayerTracking(player)
+        end
+        
+        local playerAddedConn = Players.PlayerAdded:Connect(function(player)
+            if MainModule.AutoDodge.Enabled then
+                setupInstantPlayerTracking(player)
+            end
+        end)
+        table.insert(MainModule.AutoDodge.Connections, playerAddedConn)
+        
+        setupInstantReactionMonitor()
+    end
+end
+
+function MainModule.TeleportToHider()
+    local character = GetCharacter()
+    if not character or not character:FindFirstChild("HumanoidRootPart") then
+        MainModule.ShowNotification("HNS", "Character not found", 3)
+        return
+    end
+    
+    local targetPlayer = nil
+    local targetRoot = nil
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and IsHider(player) then
+            local hiderChar = player.Character
+            if hiderChar and hiderChar:FindFirstChild("HumanoidRootPart") then
+                targetPlayer = player
+                targetRoot = hiderChar.HumanoidRootPart
+                break
+            end
+        end
+    end
+    
+    if not targetRoot then
+        MainModule.ShowNotification("HNS", "No hider found", 3)
+        return
+    end
+    
+    local targetPos = targetRoot.Position
+    local currentRoot = character:FindFirstChild("HumanoidRootPart")
+    
+    if currentRoot then
+        currentRoot.CFrame = CFrame.new(targetPos.X, targetPos.Y + 3, targetPos.Z)
+        MainModule.ShowNotification("HNS", "Teleported to hider", 3)
+    end
 end
 
 function MainModule.CreateButton(buttonName, functionName, parentFrame)
@@ -968,42 +1324,15 @@ function MainModule.CreateButton(buttonName, functionName, parentFrame)
     stroke.Thickness = 2
     stroke.Parent = button
     
-    button.MouseButton1Click:Connect(function()
-        if MainModule[functionName] then
+    if MainModule[functionName] then
+        button.MouseButton1Click:Connect(function()
             MainModule[functionName]()
-        end
-    end)
+        end)
+    end
     
     return button
 end
 
-function MainModule.CreateGameSection(gameName, functions, parentFrame)
-    local title = Instance.new("TextLabel")
-    title.Name = gameName .. "Title"
-    title.Size = UDim2.new(1, -20, 0, 35)
-    title.Position = UDim2.new(0, 10, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = gameName
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 22
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = parentFrame
-    
-    local titleStroke = Instance.new("UIStroke")
-    titleStroke.Color = Color3.fromRGB(100, 100, 100)
-    titleStroke.Thickness = 1
-    titleStroke.Parent = title
-    
-    local yOffset = 40
-    
-    for i, funcInfo in ipairs(functions) do
-        local button = MainModule.CreateButton(funcInfo.name, funcInfo.func, parentFrame)
-        button.Position = UDim2.new(0, 10, 0, yOffset)
-        yOffset = yOffset + 50
-    end
-    
-    return yOffset + 20
-end
+print("Main.lua loaded successfully")
 
 return MainModule
