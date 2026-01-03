@@ -2449,8 +2449,6 @@ function MainModule.ForceStopAutoGonggi()
     MainModule.ToggleAutoGonggi(false)
 end
 
-вот запомни авто додж
-
 MainModule.AutoDodge = {
     Enabled = false,
     AnimationIds = {
