@@ -263,7 +263,7 @@ background.Parent = screenGui
 
 local mainContainer = Instance.new("Frame")
 mainContainer.Name = "MainContainer"
-mainContainer.Size = isMobile and UDim2.new(0.95, 0, 0.9, 0) or UDim2.new(0, 780, 0, 520)
+mainContainer.Size = isMobile and UDim2.new(0.85, 0, 0.8, 0) or UDim2.new(0, 700, 0, 450)
 mainContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 mainContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
 mainContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
@@ -274,12 +274,12 @@ mainContainer.Visible = false
 mainContainer.Parent = screenGui
 
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 16)
+corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = mainContainer
 
 local mainStroke = Instance.new("UIStroke")
 mainStroke.Color = Color3.fromRGB(35, 35, 35)
-mainStroke.Thickness = 2.5
+mainStroke.Thickness = 2
 mainStroke.Transparency = 0
 mainStroke.LineJoinMode = Enum.LineJoinMode.Round
 mainStroke.ZIndex = 2
@@ -294,8 +294,8 @@ accentStroke.ZIndex = 3
 accentStroke.Parent = mainContainer
 
 local innerBackground = Instance.new("Frame")
-innerBackground.Size = UDim2.new(1, -8, 1, -8)
-innerBackground.Position = UDim2.new(0, 4, 0, 4)
+innerBackground.Size = UDim2.new(1, -6, 1, -6)
+innerBackground.Position = UDim2.new(0, 3, 0, 3)
 innerBackground.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
 innerBackground.BackgroundTransparency = 0.3
 innerBackground.BorderSizePixel = 0
@@ -303,18 +303,18 @@ innerBackground.ZIndex = 2
 innerBackground.Parent = mainContainer
 
 local innerCorner = Instance.new("UICorner")
-innerCorner.CornerRadius = UDim.new(0, 12)
+innerCorner.CornerRadius = UDim.new(0, 10)
 innerCorner.Parent = innerBackground
 
 local contentContainer = Instance.new("Frame")
-contentContainer.Size = UDim2.new(1, -16, 1, -16)
-contentContainer.Position = UDim2.new(0, 8, 0, 8)
+contentContainer.Size = UDim2.new(1, -12, 1, -12)
+contentContainer.Position = UDim2.new(0, 6, 0, 6)
 contentContainer.BackgroundTransparency = 1
 contentContainer.ZIndex = 3
 contentContainer.Parent = mainContainer
 
 local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, isMobile and 80 or 66)
+topBar.Size = UDim2.new(1, 0, 0, isMobile and 50 or 50)
 topBar.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 topBar.BackgroundTransparency = 0
 topBar.BorderSizePixel = 0
@@ -322,16 +322,16 @@ topBar.ZIndex = 4
 topBar.Parent = contentContainer
 
 local topBarCorner = Instance.new("UICorner")
-topBarCorner.CornerRadius = UDim.new(0, 12)
+topBarCorner.CornerRadius = UDim.new(0, 8)
 topBarCorner.Parent = topBar
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = isMobile and UDim2.new(1, -100, 1, 0) or UDim2.new(1, -50, 1, 0)
-titleLabel.Position = UDim2.new(0, isMobile and 20 or 25, 0, 0)
+titleLabel.Size = isMobile and UDim2.new(1, -80, 1, 0) or UDim2.new(1, -50, 1, 0)
+titleLabel.Position = UDim2.new(0, isMobile and 15 or 15, 0, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text = "DEVSHIFT"
 titleLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-titleLabel.TextSize = isMobile and 32 or 32
+titleLabel.TextSize = isMobile and 22 or 24
 titleLabel.Font = Enum.Font.GothamBlack
 titleLabel.TextTransparency = 0
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -343,15 +343,15 @@ local closeButton
 if isMobile then
     closeButton = Instance.new("TextButton")
     closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 65, 0, 65)
-    closeButton.Position = UDim2.new(1, -15, 0.5, 0)
+    closeButton.Size = UDim2.new(0, 40, 0, 40)
+    closeButton.Position = UDim2.new(1, -10, 0.5, 0)
     closeButton.AnchorPoint = Vector2.new(1, 0.5)
     closeButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     closeButton.BackgroundTransparency = 0
     closeButton.BorderSizePixel = 0
     closeButton.Text = "X"
     closeButton.TextColor3 = Color3.fromRGB(220, 220, 220)
-    closeButton.TextSize = 32
+    closeButton.TextSize = 20
     closeButton.Font = Enum.Font.GothamBold
     closeButton.TextTransparency = 0
     closeButton.ZIndex = 10
@@ -359,27 +359,27 @@ if isMobile then
     closeButton.Parent = topBar
 
     local closeButtonCorner = Instance.new("UICorner")
-    closeButtonCorner.CornerRadius = UDim.new(0, 12)
+    closeButtonCorner.CornerRadius = UDim.new(0, 8)
     closeButtonCorner.Parent = closeButton
 
     local closeButtonStroke = Instance.new("UIStroke")
     closeButtonStroke.Color = Color3.fromRGB(60, 60, 60)
-    closeButtonStroke.Thickness = 2
+    closeButtonStroke.Thickness = 1.5
     closeButtonStroke.Transparency = 0
     closeButtonStroke.ZIndex = 10
     closeButtonStroke.Parent = closeButton
 end
 
 local mainContent = Instance.new("Frame")
-mainContent.Size = UDim2.new(1, 0, 1, -(isMobile and 90 or 76))
-mainContent.Position = UDim2.new(0, 0, 0, isMobile and 90 or 76)
+mainContent.Size = UDim2.new(1, 0, 1, -(isMobile and 60 or 60))
+mainContent.Position = UDim2.new(0, 0, 0, isMobile and 60 or 60)
 mainContent.BackgroundTransparency = 1
 mainContent.ZIndex = 4
 mainContent.Parent = contentContainer
 
 -- Контейнер для вкладок
 local tabsContainer = Instance.new("Frame")
-tabsContainer.Size = isMobile and UDim2.new(1, 0, 0, 60) or UDim2.new(0.2, -5, 1, 0)
+tabsContainer.Size = isMobile and UDim2.new(1, 0, 0, 50) or UDim2.new(0.2, -4, 1, 0)
 tabsContainer.Position = isMobile and UDim2.new(0, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
 tabsContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 tabsContainer.BackgroundTransparency = 0
@@ -388,20 +388,20 @@ tabsContainer.ZIndex = 6
 tabsContainer.Parent = mainContent
 
 local tabsCorner = Instance.new("UICorner")
-tabsCorner.CornerRadius = UDim.new(0, 10)
+tabsCorner.CornerRadius = UDim.new(0, 8)
 tabsCorner.Parent = tabsContainer
 
 local tabsList = Instance.new("Frame")
 tabsList.Name = "TabsList"
-tabsList.Size = isMobile and UDim2.new(1, -10, 1, -10) or UDim2.new(1, -10, 1, -10)
-tabsList.Position = UDim2.new(0, 5, 0, 5)
+tabsList.Size = isMobile and UDim2.new(1, -8, 1, -8) or UDim2.new(1, -8, 1, -8)
+tabsList.Position = UDim2.new(0, 4, 0, 4)
 tabsList.BackgroundTransparency = 1
 tabsList.BorderSizePixel = 0
 tabsList.ZIndex = 7
 tabsList.Parent = tabsContainer
 
 local tabsListLayout = Instance.new("UIListLayout")
-tabsListLayout.Padding = UDim.new(0, 8)
+tabsListLayout.Padding = UDim.new(0, 6)
 tabsListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 tabsListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 tabsListLayout.FillDirection = isMobile and Enum.FillDirection.Horizontal or Enum.FillDirection.Vertical
@@ -409,8 +409,8 @@ tabsListLayout.Parent = tabsList
 
 -- Контейнер для функций
 local functionsContainer = Instance.new("Frame")
-functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -70) or UDim2.new(0.8, -5, 1, 0)
-functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 65) or UDim2.new(0.2, 5, 0, 0)
+functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -60) or UDim2.new(0.8, -4, 1, 0)
+functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 55) or UDim2.new(0.2, 4, 0, 0)
 functionsContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 functionsContainer.BackgroundTransparency = 0
 functionsContainer.BorderSizePixel = 0
@@ -418,7 +418,7 @@ functionsContainer.ZIndex = 5
 functionsContainer.Parent = mainContent
 
 local functionsCorner = Instance.new("UICorner")
-functionsCorner.CornerRadius = UDim.new(0, 12)
+functionsCorner.CornerRadius = UDim.new(0, 8)
 functionsCorner.Parent = functionsContainer
 
 -- Кнопка открытия меню (только для мобильных)
@@ -426,15 +426,14 @@ local openButton
 if isMobile then
     openButton = Instance.new("TextButton")
     openButton.Name = "OpenButton"
-    openButton.Size = UDim2.new(0, 75, 0, 75)
-    openButton.Position = UDim2.new(0, 25, 1, -100)
-    openButton.AnchorPoint = Vector2.new(0, 1)
-    openButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    openButton.BackgroundTransparency = 0.1
+    openButton.Size = UDim2.new(0, 80, 0, 40)
+    openButton.Position = UDim2.new(0, 20, 0, 20)
+    openButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    openButton.BackgroundTransparency = 0
     openButton.BorderSizePixel = 0
-    openButton.Text = "☰"
+    openButton.Text = "OPEN"
     openButton.TextColor3 = Color3.fromRGB(240, 240, 240)
-    openButton.TextSize = 34
+    openButton.TextSize = 18
     openButton.Font = Enum.Font.GothamBold
     openButton.Visible = false
     openButton.ZIndex = 1000
@@ -442,12 +441,12 @@ if isMobile then
     openButton.Parent = screenGui
 
     local openButtonCorner = Instance.new("UICorner")
-    openButtonCorner.CornerRadius = UDim.new(0, 16)
+    openButtonCorner.CornerRadius = UDim.new(0, 8)
     openButtonCorner.Parent = openButton
 
     local openButtonStroke = Instance.new("UIStroke")
     openButtonStroke.Color = Color3.fromRGB(60, 60, 60)
-    openButtonStroke.Thickness = 2.5
+    openButtonStroke.Thickness = 1.5
     openButtonStroke.ZIndex = 1000
     openButtonStroke.Parent = openButton
 end
@@ -456,7 +455,7 @@ local toggleElements = {}
 
 local function createModernToggle(parent, text, state, callback)
     local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = UDim2.new(1, -12, 0, isMobile and 65 or 50)
+    toggleFrame.Size = UDim2.new(1, -10, 0, isMobile and 45 or 40)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.ZIndex = 10
     toggleFrame.Parent = parent
@@ -472,22 +471,22 @@ local function createModernToggle(parent, text, state, callback)
     button.Parent = toggleFrame
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
+    corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = button
     
     local stroke = Instance.new("UIStroke")
     stroke.Color = state and Color3.fromRGB(70, 150, 70) or Color3.fromRGB(60, 60, 60)
-    stroke.Thickness = 2
+    stroke.Thickness = 1.5
     stroke.ZIndex = 11
     stroke.Parent = button
     
     local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(0.7, -10, 1, 0)
-    textLabel.Position = UDim2.new(0, 16, 0, 0)
+    textLabel.Size = UDim2.new(0.7, -8, 1, 0)
+    textLabel.Position = UDim2.new(0, 12, 0, 0)
     textLabel.BackgroundTransparency = 1
     textLabel.Text = text
     textLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-    textLabel.TextSize = isMobile and 18 or 14
+    textLabel.TextSize = isMobile and 14 or 12
     textLabel.Font = Enum.Font.GothamMedium
     textLabel.TextXAlignment = Enum.TextXAlignment.Left
     textLabel.ZIndex = 12
@@ -495,8 +494,8 @@ local function createModernToggle(parent, text, state, callback)
     
     local toggleSwitch = Instance.new("Frame")
     toggleSwitch.Name = "ToggleSwitch"
-    toggleSwitch.Size = UDim2.new(0, isMobile and 65 or 48, 0, isMobile and 32 or 24)
-    toggleSwitch.Position = UDim2.new(1, -10, 0.5, 0)
+    toggleSwitch.Size = UDim2.new(0, isMobile and 50 or 40, 0, isMobile and 25 or 20)
+    toggleSwitch.Position = UDim2.new(1, -8, 0.5, 0)
     toggleSwitch.AnchorPoint = Vector2.new(1, 0.5)
     toggleSwitch.BackgroundColor3 = state and Color3.fromRGB(40, 100, 40) or Color3.fromRGB(45, 45, 45)
     toggleSwitch.BorderSizePixel = 0
@@ -515,7 +514,7 @@ local function createModernToggle(parent, text, state, callback)
     
     local switchHandle = Instance.new("Frame")
     switchHandle.Name = "Handle"
-    switchHandle.Size = UDim2.new(0, isMobile and 26 or 18, 0, isMobile and 26 or 18)
+    switchHandle.Size = UDim2.new(0, isMobile and 20 or 16, 0, isMobile and 20 or 16)
     switchHandle.Position = state and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0)
     switchHandle.AnchorPoint = Vector2.new(state and 1 or 0, 0.5)
     switchHandle.BackgroundColor3 = Color3.fromRGB(250, 250, 250)
@@ -529,7 +528,7 @@ local function createModernToggle(parent, text, state, callback)
     
     local handleStroke = Instance.new("UIStroke")
     handleStroke.Color = Color3.fromRGB(30, 30, 30)
-    handleStroke.Thickness = 1.5
+    handleStroke.Thickness = 1
     handleStroke.ZIndex = 14
     handleStroke.Parent = switchHandle
     
@@ -574,25 +573,25 @@ end
 
 local function createModernButton(parent, text, callback)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, -12, 0, isMobile and 65 or 50)
+    button.Size = UDim2.new(1, -10, 0, isMobile and 45 or 40)
     button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     button.BackgroundTransparency = 0
     button.BorderSizePixel = 0
     button.Text = text
     button.TextColor3 = Color3.fromRGB(240, 240, 240)
-    button.TextSize = isMobile and 18 or 14
+    button.TextSize = isMobile and 14 or 12
     button.Font = Enum.Font.GothamMedium
     button.AutoButtonColor = true
     button.ZIndex = 10
     button.Parent = parent
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
+    corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = button
     
     local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(70, 70, 70)
-    stroke.Thickness = 2
+    stroke.Thickness = 1.5
     stroke.ZIndex = 10
     stroke.Parent = button
     
@@ -606,13 +605,13 @@ end
 local function createTabButton(tabName)
     local tabButton = Instance.new("TextButton")
     tabButton.Name = tabName .. "Tab"
-    tabButton.Size = isMobile and UDim2.new(0, 120, 0, 50) or UDim2.new(1, 0, 0, 44)
+    tabButton.Size = isMobile and UDim2.new(0, 85, 0, 36) or UDim2.new(1, 0, 0, 36)
     tabButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     tabButton.BackgroundTransparency = 0
     tabButton.BorderSizePixel = 0
     tabButton.Text = tabName:upper()
     tabButton.TextColor3 = Color3.fromRGB(180, 180, 180)
-    tabButton.TextSize = isMobile and 14 or 13
+    tabButton.TextSize = isMobile and 11 or 11
     tabButton.Font = Enum.Font.GothamMedium
     tabButton.TextTransparency = 0
     tabButton.ZIndex = 8
@@ -620,12 +619,12 @@ local function createTabButton(tabName)
     tabButton.Parent = tabsList
     
     local tabCorner = Instance.new("UICorner")
-    tabCorner.CornerRadius = UDim.new(0, 10)
+    tabCorner.CornerRadius = UDim.new(0, 6)
     tabCorner.Parent = tabButton
     
     local tabStroke = Instance.new("UIStroke")
     tabStroke.Color = Color3.fromRGB(50, 50, 50)
-    tabStroke.Thickness = 2
+    tabStroke.Thickness = 1.5
     tabStroke.Transparency = 0
     tabStroke.ZIndex = 8
     tabStroke.Parent = tabButton
@@ -654,8 +653,8 @@ local function createGamesContent()
     
     local contentFrame = Instance.new("Frame")
     contentFrame.Name = "GamesContent"
-    contentFrame.Size = UDim2.new(1, -20, 1, -20)
-    contentFrame.Position = UDim2.new(0, 10, 0, 10)
+    contentFrame.Size = UDim2.new(1, -16, 1, -16)
+    contentFrame.Position = UDim2.new(0, 8, 0, 8)
     contentFrame.BackgroundTransparency = 1
     contentFrame.ZIndex = 8
     contentFrame.Parent = functionsContainer
@@ -665,7 +664,7 @@ local function createGamesContent()
     scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
     scrollingFrame.BackgroundTransparency = 1
     scrollingFrame.BorderSizePixel = 0
-    scrollingFrame.ScrollBarThickness = isMobile and 12 or 8
+    scrollingFrame.ScrollBarThickness = isMobile and 10 or 6
     scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(40, 40, 40)
     scrollingFrame.ScrollBarImageTransparency = 0.5
     scrollingFrame.ZIndex = 9
@@ -679,7 +678,7 @@ local function createGamesContent()
     gamesContainer.Parent = scrollingFrame
     
     local gamesLayout = Instance.new("UIListLayout")
-    gamesLayout.Padding = UDim.new(0, 20)
+    gamesLayout.Padding = UDim.new(0, 15)
     gamesLayout.SortOrder = Enum.SortOrder.LayoutOrder
     gamesLayout.Parent = gamesContainer
     
@@ -775,12 +774,12 @@ local function createGamesContent()
         sectionFrame.Parent = gamesContainer
         
         local sectionTitle = Instance.new("TextLabel")
-        sectionTitle.Size = UDim2.new(1, 0, 0, isMobile and 55 or 42)
+        sectionTitle.Size = UDim2.new(1, 0, 0, isMobile and 35 or 30)
         sectionTitle.Position = UDim2.new(0, 0, 0, 1)
         sectionTitle.BackgroundTransparency = 1
         sectionTitle.Text = section.title
         sectionTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
-        sectionTitle.TextSize = isMobile and 20 or 16
+        sectionTitle.TextSize = isMobile and 16 or 14
         sectionTitle.Font = Enum.Font.GothamBold
         sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
         sectionTitle.ZIndex = 12
@@ -794,13 +793,13 @@ local function createGamesContent()
         
         local itemsContainer = Instance.new("Frame")
         itemsContainer.Size = UDim2.new(1, 0, 0, 0)
-        itemsContainer.Position = UDim2.new(0, 0, 0, isMobile and 60 or 47)
+        itemsContainer.Position = UDim2.new(0, 0, 0, isMobile and 40 or 35)
         itemsContainer.BackgroundTransparency = 1
         itemsContainer.ZIndex = 12
         itemsContainer.Parent = sectionFrame
         
         local itemsLayout = Instance.new("UIListLayout")
-        itemsLayout.Padding = UDim.new(0, 12)
+        itemsLayout.Padding = UDim.new(0, 10)
         itemsLayout.SortOrder = Enum.SortOrder.LayoutOrder
         itemsLayout.Parent = itemsContainer
         
@@ -826,9 +825,9 @@ local function createGamesContent()
             end
         end
         
-        local totalItemHeight = itemCount * (isMobile and 65 or 50) + (itemCount - 1) * 12
+        local totalItemHeight = itemCount * (isMobile and 45 or 40) + (itemCount - 1) * 10
         itemsContainer.Size = UDim2.new(1, 0, 0, totalItemHeight)
-        sectionFrame.Size = UDim2.new(1, 0, 0, (isMobile and 60 or 47) + totalItemHeight)
+        sectionFrame.Size = UDim2.new(1, 0, 0, (isMobile and 40 or 35) + totalItemHeight)
         
         createdSections[section.title] = true
     end
@@ -848,19 +847,19 @@ end
 local function createEmptyContent(tabName)
     local contentFrame = Instance.new("Frame")
     contentFrame.Name = tabName .. "Content"
-    contentFrame.Size = UDim2.new(1, -20, 1, -20)
-    contentFrame.Position = UDim2.new(0, 10, 0, 10)
+    contentFrame.Size = UDim2.new(1, -16, 1, -16)
+    contentFrame.Position = UDim2.new(0, 8, 0, 8)
     contentFrame.BackgroundTransparency = 1
     contentFrame.ZIndex = 8
     contentFrame.Parent = functionsContainer
     
     local comingSoon = Instance.new("TextLabel")
-    comingSoon.Size = UDim2.new(1, 0, 0, 80)
+    comingSoon.Size = UDim2.new(1, 0, 0, 60)
     comingSoon.Position = UDim2.new(0, 0, 0.4, 0)
     comingSoon.BackgroundTransparency = 1
     comingSoon.Text = tabName .. "\nCOMING SOON"
     comingSoon.TextColor3 = Color3.fromRGB(120, 120, 120)
-    comingSoon.TextSize = 24
+    comingSoon.TextSize = 20
     comingSoon.Font = Enum.Font.GothamBold
     comingSoon.TextXAlignment = Enum.TextXAlignment.Center
     comingSoon.TextYAlignment = Enum.TextYAlignment.Center
@@ -901,13 +900,51 @@ local function showTabContent(tabName)
     end
 end
 
+-- Переменные для перемещения GUI
+local isDragging = false
+local dragStart
+local startPos
+
+-- Функция для включения/выключения перемещения
+local function setupDragging(frame, handle)
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+    
+    handle.InputChanged:Connect(function(input)
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    
+    handle.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = false
+        end
+    end)
+end
+
+-- Настройка перемещения для основного контейнера
+setupDragging(mainContainer, topBar)
+
+-- Настройка перемещения для кнопки OPEN на мобильных
+if isMobile and openButton then
+    setupDragging(openButton, openButton)
+end
+
 local function showMenu()
     if isMenuOpen then return end
     isMenuOpen = true
     
     blockGameControls()
     
-    -- МОМЕНТАЛЬНОЕ ПОЯВЛЕНИЕ БЕЗ АНИМАЦИИ
+    -- Центрируем меню при открытии
+    mainContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
     mainContainer.Visible = true
     background.Visible = true
     
@@ -915,7 +952,7 @@ local function showMenu()
         openButton.Visible = false
     end
     
-    -- Показываем кнопки вкладок сразу
+    -- Показываем кнопки вкладок
     for _, tabButton in pairs(tabButtons) do
         tabButton.Visible = true
     end
@@ -927,7 +964,6 @@ end
 local function hideMenu()
     if not isMenuOpen then return end
     
-    -- МОМЕНТАЛЬНОЕ СКРЫТИЕ БЕЗ АНИМАЦИИ
     mainContainer.Visible = false
     background.Visible = false
     
@@ -936,7 +972,7 @@ local function hideMenu()
         openButton.Visible = true
     end
     
-    -- Скрываем все кнопки вкладок
+    -- Скрываем кнопки вкладок
     for _, tabButton in pairs(tabButtons) do
         tabButton.Visible = false
     end
