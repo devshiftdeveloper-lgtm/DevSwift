@@ -204,16 +204,15 @@ MainModule.Killaura = {
     FrontDistance = 16,
     SpeedThreshold = 18,
     
-    MovementSpeed = 300,
-    RotationSpeed = 60,
-    Smoothness = 0.99,
-    JumpSyncSmoothness = 0.98,
+    MovementSpeed = 150,
+    RotationSpeed = 90,
+    Smoothness = 0.15,
+    PositionSmoothness = 0.3,
+    VelocitySmoothness = 0.95,
     
-    MaxVelocity = 350,
-    VelocitySmoothness = 0.98,
-    HumanizeFactor = 0.001,
-    NaturalNoise = 0.001,
-    AntiDetectionMode = true,
+    MaxVelocity = 250,
+    Acceleration = 300,
+    Deceleration = 500,
     
     LastPosition = Vector3.new(),
     TargetLastVelocity = Vector3.new(),
@@ -245,7 +244,14 @@ MainModule.Killaura = {
     LastDirectionCheckTime = 0,
     
     JumpStartAttachment = "behind",
-    JumpStartDistance = 2
+    JumpStartDistance = 2,
+    
+    CollisionDisabled = false,
+    OriginalCollisionGroups = {},
+    TransparencyData = {
+        OriginalTransparency = {},
+        OriginalLocalTransparency = 0
+    }
 }
 
 for _, animId in pairs(MainModule.Killaura.TeleportAnimations) do
@@ -262,7 +268,7 @@ local function GetHider()
         local LocalPlayer = game:GetService("Players").LocalPlayer
         if player ~= LocalPlayer and player.Character then
             local humanoid = player.Character:FindFirstChild("Humanoid")
-            if humanoid and humanoid.Health > 0 and IsHider(player) then  -- ← ИЗМЕНЕНО ЗДЕСЬ
+            if humanoid and humanoid.Health > 0 and IsHider(player) then
                 return player.Character
             end
         end
@@ -283,8 +289,7 @@ local function findClosestPlayer()
     
     local myPos = rootPart.Position
     
-    -- ИСПРАВЛЕНО: Используем локальную функцию GetHider вместо MainModule.GetHider
-    local hiderCharacter = GetHider()  -- ← ИЗМЕНЕНО ЗДЕСЬ
+    local hiderCharacter = GetHider()
     if hiderCharacter then
         local targetRoot = hiderCharacter:FindFirstChild("HumanoidRootPart")
         local humanoid = hiderCharacter:FindFirstChildOfClass("Humanoid")
@@ -318,6 +323,68 @@ local function findClosestPlayer()
     end
     
     return closestPlayer
+end
+
+local function setupCollisionAndTransparency(character)
+    local config = MainModule.Killaura
+    if not character or config.CollisionDisabled then return end
+    
+    config.CollisionDisabled = true
+    config.OriginalCollisionGroups = {}
+    config.TransparencyData.OriginalTransparency = {}
+    
+    local physicsService = game:GetService("PhysicsService")
+    
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            config.OriginalCollisionGroups[part] = part.CollisionGroupId
+            physicsService:SetPartCollisionGroup(part, "Ignore")
+            
+            config.TransparencyData.OriginalTransparency[part] = part.Transparency
+            if part:IsA("MeshPart") or part:IsA("Part") then
+                part.Transparency = 0
+            end
+        end
+    end
+    
+    local localPlayer = game:GetService("Players").LocalPlayer
+    if localPlayer.Character == character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            config.TransparencyData.OriginalLocalTransparency = humanoid.HealthDisplayDistance
+        end
+    end
+end
+
+local function restoreCollisionAndTransparency(character)
+    local config = MainModule.Killaura
+    if not character or not config.CollisionDisabled then return end
+    
+    local physicsService = game:GetService("PhysicsService")
+    
+    for part, groupId in pairs(config.OriginalCollisionGroups) do
+        if part and part.Parent then
+            physicsService:SetPartCollisionGroup(part, physicsService:GetCollisionGroupName(groupId))
+        end
+    end
+    
+    for part, transparency in pairs(config.TransparencyData.OriginalTransparency) do
+        if part and part.Parent then
+            part.Transparency = transparency
+        end
+    end
+    
+    local localPlayer = game:GetService("Players").LocalPlayer
+    if localPlayer.Character == character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.HealthDisplayDistance = config.TransparencyData.OriginalLocalTransparency
+        end
+    end
+    
+    config.CollisionDisabled = false
+    config.OriginalCollisionGroups = {}
+    config.TransparencyData.OriginalTransparency = {}
 end
 
 local animationCache = {}
@@ -580,7 +647,7 @@ local function getSmartPositioning(targetRoot)
     end
 end
 
-local function ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
+local function smoothMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
     local config = MainModule.Killaura
     
     local targetRoot = nil
@@ -611,15 +678,23 @@ local function ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, is
     local distance = direction.Magnitude
     
     if distance > 0.01 then
-        local targetSpeed = math.min(config.MovementSpeed, distance * 100)
+        local targetSpeed = math.min(config.MovementSpeed, config.Acceleration * deltaTime + distance * 10)
         
         local smoothFactor = config.Smoothness
-        config.CurrentVelocity = config.CurrentVelocity:Lerp(direction.Unit * targetSpeed, smoothFactor)
+        local directionUnit = direction.Unit
+        
+        local velocityChange = directionUnit * targetSpeed
+        config.CurrentVelocity = config.CurrentVelocity:Lerp(velocityChange, smoothFactor)
+        
+        if config.CurrentVelocity.Magnitude > config.MaxVelocity then
+            config.CurrentVelocity = config.CurrentVelocity.Unit * config.MaxVelocity
+        end
         
         local moveStep = config.CurrentVelocity * deltaTime
         
         if moveStep.Magnitude > distance then
             moveStep = direction
+            config.CurrentVelocity = direction.Unit * math.min(distance / deltaTime, config.MaxVelocity)
         end
         
         local newPos = currentPos + moveStep
@@ -632,7 +707,8 @@ local function ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, is
         local lookAtPos = Vector3.new(targetPos.X, newPos.Y, targetPos.Z)
         local targetCF = CFrame.new(newPos, lookAtPos)
         
-        localRoot.CFrame = localRoot.CFrame:Lerp(targetCF, config.RotationSpeed * deltaTime)
+        local smoothRotation = config.RotationSpeed * deltaTime
+        localRoot.CFrame = localRoot.CFrame:Lerp(targetCF, smoothRotation)
         
         localRoot.Velocity = config.CurrentVelocity
         
@@ -673,7 +749,7 @@ local function ultraFastSync(targetRoot, targetHumanoid, localRoot, deltaTime)
         config.JumpStartDistance = config.BehindDistance
     end
     
-    ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
+    smoothMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
     
     if not isAnimationLift and not config.IsJumping and not config.IsLifted then
         local rayOrigin = localRoot.Position + Vector3.new(0, 1, 0)
@@ -740,6 +816,10 @@ local function updateUltraFastSync(deltaTime)
     
     local config = MainModule.Killaura
     
+    if not config.CollisionDisabled then
+        setupCollisionAndTransparency(character)
+    end
+    
     if not checkAndSwitchTarget() then
         config.CurrentTarget = nil
         config.IsAttached = false
@@ -751,11 +831,15 @@ local function updateUltraFastSync(deltaTime)
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
         
+        restoreCollisionAndTransparency(character)
+        
         local closestPlayer = findClosestPlayer()
         if closestPlayer then
             config.CurrentTarget = closestPlayer
             config.IsAttached = true
             config.LastAnimationState = false
+            
+            setupCollisionAndTransparency(character)
             
             local targetChar = closestPlayer.Character
             local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
@@ -804,6 +888,7 @@ local function updateUltraFastSync(deltaTime)
     if not targetRoot or not targetHumanoid or targetHumanoid.Health <= 0 then
         config.CurrentTarget = nil
         config.IsAttached = false
+        restoreCollisionAndTransparency(character)
         return
     end
     
@@ -841,6 +926,11 @@ function MainModule.ToggleKillaura(enabled)
         config.CurrentVelocity = Vector3.new(0, 0, 0)
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
+        
+        local localPlayer = game:GetService("Players").LocalPlayer
+        if localPlayer and localPlayer.Character then
+            restoreCollisionAndTransparency(localPlayer.Character)
+        end
         return
     end
     
@@ -861,6 +951,8 @@ function MainModule.ToggleKillaura(enabled)
         
         local localPlayer = game:GetService("Players").LocalPlayer
         if localPlayer and localPlayer.Character then
+            setupCollisionAndTransparency(localPlayer.Character)
+            
             local localRoot = localPlayer.Character:FindFirstChild("HumanoidRootPart")
             local targetChar = closestPlayer.Character
             local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
@@ -907,7 +999,7 @@ function MainModule.ToggleKillaura(enabled)
     local localPlayer = players.LocalPlayer
     
     if localPlayer then
-        local charConn = localPlayer.CharacterAdded:Connect(function()
+        local charConn = localPlayer.CharacterAdded:Connect(function(character)
             if not config.Enabled then return end
             
             task.wait(0.1)
@@ -924,6 +1016,8 @@ function MainModule.ToggleKillaura(enabled)
             config.JumpStartAttachment = "behind"
             config.JumpStartDistance = config.BehindDistance
             
+            setupCollisionAndTransparency(character)
+            
             local closestPlayer = findClosestPlayer()
             if closestPlayer then
                 config.CurrentTarget = closestPlayer
@@ -933,6 +1027,13 @@ function MainModule.ToggleKillaura(enabled)
             end
         end)
         table.insert(config.Connections, charConn)
+        
+        local charRemovingConn = localPlayer.CharacterRemoving:Connect(function(character)
+            if config.Enabled then
+                restoreCollisionAndTransparency(character)
+            end
+        end)
+        table.insert(config.Connections, charRemovingConn)
     end
     
     local removeConn = players.PlayerRemoving:Connect(function(player)
@@ -946,6 +1047,11 @@ function MainModule.ToggleKillaura(enabled)
             config.CurrentVelocity = Vector3.new(0, 0, 0)
             config.JumpStartAttachment = "behind"
             config.JumpStartDistance = config.BehindDistance
+            
+            local localPlayer = players.LocalPlayer
+            if localPlayer and localPlayer.Character then
+                setupCollisionAndTransparency(localPlayer.Character)
+            end
             
             local closestPlayer = findClosestPlayer()
             if closestPlayer then
