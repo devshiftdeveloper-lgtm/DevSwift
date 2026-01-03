@@ -204,15 +204,15 @@ MainModule.Killaura = {
     FrontDistance = 19,
     SpeedThreshold = 18,
     
-    MovementSpeed = 120,
-    RotationSpeed = 30,
-    Smoothness = 0.95,
-    JumpSyncSmoothness = 0.98,
+    MovementSpeed = 45,
+    RotationSpeed = 20,
+    Smoothness = 0.85,
+    JumpSyncSmoothness = 0.92,
     
-    MaxVelocity = 350,
-    VelocitySmoothness = 0.98,
-    HumanizeFactor = 0.001,
-    NaturalNoise = 0.001,
+    MaxVelocity = 120,
+    VelocitySmoothness = 0.92,
+    HumanizeFactor = 0.005,
+    NaturalNoise = 0.002,
     AntiDetectionMode = true,
     
     LastPosition = Vector3.new(),
@@ -243,12 +243,41 @@ MainModule.Killaura = {
     LastTargetPosition = Vector3.new(),
     LastTargetVelocity = Vector3.new(),
     LastDirectionCheckTime = 0,
+    LastUpdateTime = tick(),
     
     JumpStartAttachment = "behind",
     JumpStartDistance = 2,
     
     InitialTargetSet = false,
-    InitialTargetPlayer = nil
+    InitialTargetPlayer = nil,
+    
+    PredictionEnabled = true,
+    PredictionStrength = 0.3,
+    VelocityPredictionFrames = 2,
+    
+    SmoothDampPosition = Vector3.new(),
+    SmoothDampVelocity = Vector3.new(),
+    SmoothDampTime = 0.1,
+    
+    RotationSmoothness = 0.15,
+    LastLookDirection = Vector3.new(),
+    
+    DistanceSmoothing = 0.95,
+    LastDistance = 0,
+    TargetDistance = 0,
+    
+    HeightSmoothing = 0.9,
+    CurrentHeight = 0,
+    TargetHeight = 0,
+    
+    StabilityThreshold = 0.5,
+    StabilityTime = 0,
+    MaxStabilityTime = 0.3,
+    
+    BufferSize = 3,
+    PositionBuffer = {},
+    VelocityBuffer = {},
+    TimeBuffer = {}
 }
 
 for _, animId in pairs(MainModule.Killaura.TeleportAnimations) do
@@ -271,6 +300,60 @@ local function GetHider()
         end
     end
     return nil
+end
+
+local function smoothDamp(current, target, currentVelocity, smoothTime, deltaTime)
+    local omega = 2 / smoothTime
+    local x = omega * deltaTime
+    local exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
+    local change = current - target
+    local originalTo = target
+    
+    local maxChange = 1000 * smoothTime
+    change = math.clamp(change, -maxChange, maxChange)
+    target = current - change
+    
+    local temp = (currentVelocity + omega * change) * deltaTime
+    currentVelocity = (currentVelocity - omega * temp) * exp
+    local output = target + (change + temp) * exp
+    
+    if (originalTo - current > 0) == (output > originalTo) then
+        output = originalTo
+        currentVelocity = (output - originalTo) / deltaTime
+    end
+    
+    return output, currentVelocity
+end
+
+local function predictPosition(currentPos, velocity, acceleration, deltaTime, frames)
+    local predicted = currentPos
+    local vel = velocity
+    local accel = acceleration
+    
+    for i = 1, frames do
+        predicted = predicted + vel * deltaTime + 0.5 * accel * deltaTime * deltaTime
+        vel = vel + accel * deltaTime
+    end
+    
+    return predicted
+end
+
+local function calculateVelocity(positionBuffer, timeBuffer)
+    if #positionBuffer < 2 then return Vector3.new() end
+    
+    local totalVelocity = Vector3.new()
+    local count = 0
+    
+    for i = 2, #positionBuffer do
+        local timeDiff = timeBuffer[i] - timeBuffer[i-1]
+        if timeDiff > 0 then
+            local velocity = (positionBuffer[i] - positionBuffer[i-1]) / timeDiff
+            totalVelocity = totalVelocity + velocity
+            count = count + 1
+        end
+    end
+    
+    return count > 0 and totalVelocity / count or Vector3.new()
 end
 
 local function findClosestPlayer(ignoreCurrentTarget)
@@ -373,23 +456,32 @@ local function checkTargetJumping(targetRoot)
     local config = MainModule.Killaura
     local currentTime = tick()
     
-    local isJumpingNow = targetRoot.Velocity.Y > 8
+    table.insert(config.PositionBuffer, targetRoot.Position)
+    table.insert(config.TimeBuffer, currentTime)
+    
+    if #config.PositionBuffer > config.BufferSize then
+        table.remove(config.PositionBuffer, 1)
+        table.remove(config.TimeBuffer, 1)
+    end
+    
+    local currentVelocity = calculateVelocity(config.PositionBuffer, config.TimeBuffer)
+    
+    local isJumpingNow = currentVelocity.Y > 6
     
     if isJumpingNow and not config.JumpData.TargetJumping then
         config.JumpData.TargetJumping = true
         config.JumpData.JumpStartY = targetRoot.Position.Y
         config.JumpData.JumpPeakReached = false
-        config.JumpData.JumpVelocity = targetRoot.Velocity.Y
+        config.JumpData.JumpVelocity = currentVelocity.Y
         config.JumpData.JumpStartTime = currentTime
         config.JumpSync = true
         config.IsJumping = true
         
-        local targetVel = targetRoot.Velocity
         local targetLook = targetRoot.CFrame.LookVector
-        local horizontalVel = Vector3.new(targetVel.X, 0, targetVel.Z)
+        local horizontalVel = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
         local horizontalSpeed = horizontalVel.Magnitude
         
-        if horizontalSpeed > 2 then
+        if horizontalSpeed > 1 then
             local lookDirection = Vector3.new(targetLook.X, 0, targetLook.Z).Unit
             local moveDirection = horizontalVel.Unit
             local dotProduct = lookDirection:Dot(moveDirection)
@@ -409,12 +501,12 @@ local function checkTargetJumping(targetRoot)
     elseif config.JumpData.TargetJumping then
         config.JumpData.JumpDuration = currentTime - config.JumpData.JumpStartTime
         
-        if targetRoot.Velocity.Y < 0 and not config.JumpData.JumpPeakReached then
+        if currentVelocity.Y < 0 and not config.JumpData.JumpPeakReached then
             config.JumpData.JumpPeakReached = true
         end
         
-        if targetRoot.Velocity.Y > -2 and targetRoot.Velocity.Y < 2 and 
-           math.abs(targetRoot.Position.Y - config.JumpData.JumpStartY) < 1 then
+        if math.abs(currentVelocity.Y) < 0.5 and 
+           math.abs(targetRoot.Position.Y - config.JumpData.JumpStartY) < 0.5 then
             config.JumpData.TargetJumping = false
             config.JumpSync = false
             config.IsJumping = false
@@ -423,19 +515,20 @@ local function checkTargetJumping(targetRoot)
         end
     end
     
+    config.LastTargetVelocity = currentVelocity
     return config.JumpData.TargetJumping
 end
 
 local function getTargetMovementDirection(targetRoot)
     if not targetRoot then return "idle" end
     
-    local targetVel = targetRoot.Velocity
+    local currentVelocity = MainModule.Killaura.LastTargetVelocity
     local targetLook = targetRoot.CFrame.LookVector
     
-    local horizontalVel = Vector3.new(targetVel.X, 0, targetVel.Z)
+    local horizontalVel = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
     local horizontalSpeed = horizontalVel.Magnitude
     
-    if horizontalSpeed < 2 then
+    if horizontalSpeed < 1 then
         return "idle"
     end
     
@@ -444,11 +537,11 @@ local function getTargetMovementDirection(targetRoot)
     
     local dotProduct = lookDirection:Dot(moveDirection)
     
-    if dotProduct > 0.7 then
+    if dotProduct > 0.8 then
         return "forward"
-    elseif dotProduct < -0.7 then
+    elseif dotProduct < -0.8 then
         return "backward"
-    elseif math.abs(dotProduct) < 0.3 then
+    elseif math.abs(dotProduct) < 0.2 then
         return "sideways"
     else
         return "diagonal"
@@ -472,7 +565,7 @@ local function handleAnimationLift(localRoot, targetPos, targetLook, targetVel, 
     
     if isAnimating and not config.AnimationLiftActive then
         config.AnimationLiftActive = true
-        config.OriginalGroundHeight = localRoot.Position.Y
+        config.OriginalGroundHeight = config.CurrentHeight
         
         local targetRoot = config.CurrentTarget.Character:FindFirstChild("HumanoidRootPart")
         if targetRoot then
@@ -484,53 +577,18 @@ local function handleAnimationLift(localRoot, targetPos, targetLook, targetVel, 
         end
         
         config.IsLifted = true
-        
-        local targetHeight = config.OriginalGroundHeight + config.LiftHeight
-        local currentPos = localRoot.Position
-        local newPos = Vector3.new(currentPos.X, targetHeight, currentPos.Z)
-        localRoot.CFrame = CFrame.new(newPos, targetPos)
+        config.TargetHeight = config.OriginalGroundHeight + config.LiftHeight
         
         return true
         
     elseif not isAnimating and config.AnimationLiftActive then
         config.AnimationLiftActive = false
-        
-        local currentHeight = localRoot.Position.Y
-        local targetGroundHeight = config.OriginalGroundHeight
-        
-        if currentHeight > targetGroundHeight + 0.1 then
-            local descentSpeed = 100
-            local newHeight = currentHeight - descentSpeed * deltaTime
-            
-            if newHeight < targetGroundHeight then
-                newHeight = targetGroundHeight
-                config.IsLifted = false
-                config.WasInFrontBeforeLift = false
-            end
-            
-            local newPos = Vector3.new(localRoot.Position.X, newHeight, localRoot.Position.Z)
-            localRoot.CFrame = CFrame.new(newPos, targetPos)
-            return true
-        else
-            config.IsLifted = false
-            config.WasInFrontBeforeLift = false
-            return false
-        end
+        config.TargetHeight = config.OriginalGroundHeight
+        return false
     end
     
     if config.AnimationLiftActive and config.IsLifted then
-        local targetHeight = config.OriginalGroundHeight + config.LiftHeight
-        local currentHeight = localRoot.Position.Y
-        
-        if math.abs(currentHeight - targetHeight) > 0.1 then
-            local correctionSpeed = 200
-            local heightDiff = targetHeight - currentHeight
-            local newHeight = currentHeight + heightDiff * correctionSpeed * deltaTime
-            
-            local newPos = Vector3.new(localRoot.Position.X, newHeight, localRoot.Position.Z)
-            localRoot.CFrame = CFrame.new(newPos, targetPos)
-        end
-        
+        config.TargetHeight = config.OriginalGroundHeight + config.LiftHeight
         return true
     end
     
@@ -545,25 +603,11 @@ local function syncJumpHeight(localRoot, targetRoot, targetPos, deltaTime)
     end
     
     local targetHeight = targetRoot.Position.Y
-    local myHeight = localRoot.Position.Y
-    local heightDiff = targetHeight - myHeight
+    local heightDiff = targetHeight - config.CurrentHeight
     
-    if not config.JumpStartPosition then
-        config.JumpStartPosition = localRoot.Position
-    end
-    
-    if math.abs(heightDiff) > 0.05 then
-        local jumpForce = heightDiff * deltaTime * 200
-        
-        local newHeight = myHeight + jumpForce
-        
-        local horizontalPos = Vector3.new(
-            localRoot.Position.X,
-            newHeight,
-            localRoot.Position.Z
-        )
-        
-        localRoot.CFrame = CFrame.new(horizontalPos, Vector3.new(targetPos.X, newHeight, targetPos.Z))
+    if math.abs(heightDiff) > 0.01 then
+        local smoothing = config.HeightSmoothing
+        config.CurrentHeight = config.CurrentHeight * smoothing + targetHeight * (1 - smoothing)
         return true
     end
     
@@ -577,10 +621,10 @@ local function getSmartPositioning(targetRoot)
         return "behind", config.BehindDistance
     end
     
-    local targetVel = targetRoot.Velocity
+    local currentVelocity = config.LastTargetVelocity
     local targetLook = targetRoot.CFrame.LookVector
     
-    local horizontalVel = Vector3.new(targetVel.X, 0, targetVel.Z)
+    local horizontalVel = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
     local horizontalSpeed = horizontalVel.Magnitude
     
     if config.IsJumping then
@@ -600,13 +644,21 @@ local function getSmartPositioning(targetRoot)
     end
 end
 
-local function ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
+local function ultraSmoothMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
     local config = MainModule.Killaura
+    local currentTime = tick()
     
     local targetRoot = nil
     if config.CurrentTarget and config.CurrentTarget.Character then
         targetRoot = config.CurrentTarget.Character:FindFirstChild("HumanoidRootPart")
     end
+    
+    local currentVelocity = config.LastTargetVelocity
+    local currentTime = tick()
+    local timeDiff = currentTime - config.LastUpdateTime
+    config.LastUpdateTime = currentTime
+    
+    if timeDiff <= 0 then timeDiff = 0.001 end
     
     local attachmentType, desiredDistance = getSmartPositioning(targetRoot)
     
@@ -616,26 +668,72 @@ local function ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, is
     end
     
     local desiredOffset = (attachmentType == "front") and (targetLook * desiredDistance) or (-targetLook * desiredDistance)
-    local targetGroundPos = targetPos + desiredOffset
+    
+    local predictedPos = targetPos
+    if config.PredictionEnabled and currentVelocity.Magnitude > 0.1 then
+        local acceleration = (currentVelocity - config.TargetLastVelocity) / timeDiff
+        predictedPos = predictPosition(targetPos, currentVelocity, acceleration, timeDiff, config.VelocityPredictionFrames)
+        
+        local predictionStrength = math.min(config.PredictionStrength, currentVelocity.Magnitude / 50)
+        predictedPos = targetPos * (1 - predictionStrength) + predictedPos * predictionStrength
+    end
+    
+    local targetGroundPos = predictedPos + desiredOffset
     
     if isAnimationLift then
-        targetGroundPos = Vector3.new(
-            targetGroundPos.X,
-            config.OriginalGroundHeight + config.LiftHeight,
-            targetGroundPos.Z
-        )
+        config.TargetHeight = config.OriginalGroundHeight + config.LiftHeight
+    elseif config.IsJumping then
+        config.TargetHeight = config.CurrentHeight
+    else
+        local rayOrigin = Vector3.new(targetGroundPos.X, targetGroundPos.Y + 10, targetGroundPos.Z)
+        local ray = Ray.new(rayOrigin, Vector3.new(0, -100, 0))
+        local hit, hitPos = workspace:FindPartOnRayWithIgnoreList(ray, {localRoot.Parent})
+        
+        if hit then
+            config.TargetHeight = hitPos.Y + 3
+        else
+            config.TargetHeight = targetGroundPos.Y
+        end
     end
+    
+    targetGroundPos = Vector3.new(targetGroundPos.X, config.TargetHeight, targetGroundPos.Z)
     
     local currentPos = localRoot.Position
     local direction = targetGroundPos - currentPos
     local distance = direction.Magnitude
     
+    config.LastDistance = config.LastDistance * config.DistanceSmoothing + distance * (1 - config.DistanceSmoothing)
+    config.TargetDistance = desiredDistance
+    
+    local stability = 1 - math.min(config.LastDistance / desiredDistance, 1)
+    config.StabilityTime = stability > config.StabilityThreshold and config.StabilityTime + timeDiff or 0
+    
+    local movementSpeedMultiplier = 1
+    if config.StabilityTime > config.MaxStabilityTime then
+        movementSpeedMultiplier = 0.3
+    elseif distance > desiredDistance * 1.5 then
+        movementSpeedMultiplier = 2.0
+    elseif distance > desiredDistance * 1.2 then
+        movementSpeedMultiplier = 1.5
+    end
+    
+    local targetSpeed = math.min(config.MovementSpeed * movementSpeedMultiplier, distance * 30)
+    
     if distance > 0.01 then
-        local targetSpeed = math.min(config.MovementSpeed, distance * 100)
+        local moveDirection = direction.Unit
         
-        config.CurrentVelocity = direction.Unit * targetSpeed
+        local targetVelocity = moveDirection * targetSpeed
+        local noise = Vector3.new(
+            (math.random() * 2 - 1) * config.NaturalNoise,
+            (math.random() * 2 - 1) * config.NaturalNoise,
+            (math.random() * 2 - 1) * config.NaturalNoise
+        )
         
-        local moveStep = config.CurrentVelocity * deltaTime
+        targetVelocity = targetVelocity + noise
+        
+        config.CurrentVelocity = config.CurrentVelocity * config.VelocitySmoothness + targetVelocity * (1 - config.VelocitySmoothness)
+        
+        local moveStep = config.CurrentVelocity * timeDiff
         
         if moveStep.Magnitude > distance then
             moveStep = direction
@@ -643,75 +741,63 @@ local function ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, is
         
         local newPos = currentPos + moveStep
         
-        if isAnimationLift then
-            local targetHeight = config.OriginalGroundHeight + config.LiftHeight
-            newPos = Vector3.new(newPos.X, targetHeight, newPos.Z)
+        if isAnimationLift or config.IsJumping then
+            newPos = Vector3.new(newPos.X, config.TargetHeight, newPos.Z)
+        else
+            local heightSmoothing = config.HeightSmoothing * (1 - stability * 0.5)
+            config.CurrentHeight = config.CurrentHeight * heightSmoothing + config.TargetHeight * (1 - heightSmoothing)
+            newPos = Vector3.new(newPos.X, config.CurrentHeight, newPos.Z)
         end
         
-        local lookAtPos = Vector3.new(targetPos.X, newPos.Y, targetPos.Z)
+        local lookAtPos = Vector3.new(predictedPos.X, newPos.Y, predictedPos.Z)
         local targetCF = CFrame.new(newPos, lookAtPos)
         
-        localRoot.CFrame = localRoot.CFrame:Lerp(targetCF, config.RotationSpeed * deltaTime)
+        local rotationSmoothness = config.RotationSmoothness * (1 + stability * 0.5)
+        localRoot.CFrame = localRoot.CFrame:Lerp(targetCF, rotationSmoothness)
         
         localRoot.Velocity = config.CurrentVelocity
         
     else
         if isAnimationLift then
-            local targetHeight = config.OriginalGroundHeight + config.LiftHeight
-            local fixedPos = Vector3.new(targetGroundPos.X, targetHeight, targetGroundPos.Z)
-            localRoot.CFrame = CFrame.new(fixedPos, targetPos)
+            local fixedPos = Vector3.new(targetGroundPos.X, config.TargetHeight, targetGroundPos.Z)
+            localRoot.CFrame = CFrame.new(fixedPos, predictedPos)
         else
-            localRoot.CFrame = CFrame.new(targetGroundPos, targetPos)
+            localRoot.CFrame = CFrame.new(targetGroundPos, predictedPos)
         end
         
-        config.CurrentVelocity = Vector3.new(0, 0, 0)
+        config.CurrentVelocity = config.CurrentVelocity * config.VelocitySmoothness
         localRoot.Velocity = config.CurrentVelocity
     end
     
     config.LastTargetPosition = targetPos
+    config.TargetLastVelocity = currentVelocity
 end
 
-local function ultraFastSync(targetRoot, targetHumanoid, localRoot, deltaTime)
+local function ultraSmoothSync(targetRoot, targetHumanoid, localRoot, deltaTime)
     local config = MainModule.Killaura
+    local currentTime = tick()
+    local timeDiff = currentTime - config.LastUpdateTime
     
     local targetPos = targetRoot.Position
-    local targetVel = targetRoot.Velocity
     local targetLook = targetRoot.CFrame.LookVector
     
     local isTargetJumping = checkTargetJumping(targetRoot)
     
-    local isAnimationLift = handleAnimationLift(localRoot, targetPos, targetLook, targetVel, deltaTime)
+    local isAnimationLift = handleAnimationLift(localRoot, targetPos, targetLook, config.LastTargetVelocity, timeDiff)
     
     if isTargetJumping and not isAnimationLift then
-        syncJumpHeight(localRoot, targetRoot, targetPos, deltaTime)
+        syncJumpHeight(localRoot, targetRoot, targetPos, timeDiff)
     elseif config.IsJumping and not isTargetJumping then
         config.IsJumping = false
         config.JumpSync = false
-        config.JumpStartPosition = nil
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
     end
     
-    ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
-    
-    if not isAnimationLift and not config.IsJumping and not config.IsLifted then
-        local rayOrigin = localRoot.Position + Vector3.new(0, 1, 0)
-        local ray = Ray.new(rayOrigin, Vector3.new(0, -4, 0))
-        local hit = workspace:FindPartOnRayWithIgnoreList(ray, {localRoot.Parent})
-        
-        if hit then
-            local heightDiff = localRoot.Position.Y - rayOrigin.Y + 4
-            if heightDiff > 3.0 then
-                localRoot.Velocity = Vector3.new(0, -80, 0)
-            elseif heightDiff < 2.0 then
-                localRoot.Velocity = Vector3.new(0, 50, 0)
-            end
-        end
-    end
+    ultraSmoothMovement(localRoot, targetPos, targetLook, timeDiff, isAnimationLift)
     
     config.LastPosition = localRoot.Position
-    config.TargetLastVelocity = targetVel
-    config.LastDirectionCheckTime = tick()
+    config.LastDirectionCheckTime = currentTime
 end
 
 local function checkAndSwitchTarget()
@@ -743,7 +829,7 @@ local function checkAndSwitchTarget()
     return false
 end
 
-local function updateUltraFastSync(deltaTime)
+local function updateUltraSmoothSync(deltaTime)
     if not MainModule.Killaura.Enabled then return end
     
     local localPlayer = game:GetService("Players").LocalPlayer
@@ -764,10 +850,16 @@ local function updateUltraFastSync(deltaTime)
         config.IsLifted = false
         config.IsJumping = false
         config.JumpSync = false
-        config.JumpStartPosition = nil
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
         config.InitialTargetSet = false
+        
+        config.PositionBuffer = {}
+        config.VelocityBuffer = {}
+        config.TimeBuffer = {}
+        config.CurrentVelocity = Vector3.new()
+        config.CurrentHeight = localRoot.Position.Y
+        config.TargetHeight = localRoot.Position.Y
         
         local closestPlayer = findClosestPlayer(true)
         if closestPlayer then
@@ -796,14 +888,21 @@ local function updateUltraFastSync(deltaTime)
                 
                 local desiredOffset = (attachmentType == "front") and (targetLook * desiredDistance) or (-targetLook * desiredDistance)
                 local startPos = targetRoot.Position + desiredOffset
+                startPos = Vector3.new(startPos.X, targetRoot.Position.Y, startPos.Z)
                 
                 localRoot.CFrame = CFrame.new(startPos, targetRoot.Position)
                 
                 config.LastPosition = startPos
                 config.OriginalGroundHeight = startPos.Y
+                config.CurrentHeight = startPos.Y
+                config.TargetHeight = startPos.Y
                 config.CurrentVelocity = Vector3.new(0, 0, 0)
                 config.JumpStartAttachment = attachmentType
                 config.JumpStartDistance = desiredDistance
+                
+                config.PositionBuffer = {targetRoot.Position}
+                config.TimeBuffer = {tick()}
+                config.LastTargetVelocity = targetRoot.Velocity
             end
         else
             task.delay(0.05, function()
@@ -828,7 +927,7 @@ local function updateUltraFastSync(deltaTime)
         return
     end
     
-    ultraFastSync(targetRoot, targetHumanoid, localRoot, deltaTime)
+    ultraSmoothSync(targetRoot, targetHumanoid, localRoot, deltaTime)
 end
 
 function MainModule.ToggleKillaura(enabled)
@@ -861,12 +960,17 @@ function MainModule.ToggleKillaura(enabled)
         config.AnimationLiftActive = false
         config.LastAnimationState = false
         config.JumpSync = false
-        config.JumpStartPosition = nil
         config.CurrentVelocity = Vector3.new(0, 0, 0)
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
         config.InitialTargetSet = false
         config.InitialTargetPlayer = nil
+        config.CurrentHeight = 0
+        config.TargetHeight = 0
+        config.PositionBuffer = {}
+        config.VelocityBuffer = {}
+        config.TimeBuffer = {}
+        config.StabilityTime = 0
         return
     end
     
@@ -882,10 +986,14 @@ function MainModule.ToggleKillaura(enabled)
         config.IsLifted = false
         config.IsJumping = false
         config.JumpSync = false
-        config.JumpStartPosition = nil
         config.CurrentVelocity = Vector3.new(0, 0, 0)
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
+        config.StabilityTime = 0
+        
+        config.PositionBuffer = {}
+        config.VelocityBuffer = {}
+        config.TimeBuffer = {}
         
         local localPlayer = game:GetService("Players").LocalPlayer
         if localPlayer and localPlayer.Character then
@@ -909,14 +1017,22 @@ function MainModule.ToggleKillaura(enabled)
                 
                 local desiredOffset = (attachmentType == "front") and (targetLook * desiredDistance) or (-targetLook * desiredDistance)
                 local startPos = targetRoot.Position + desiredOffset
+                startPos = Vector3.new(startPos.X, targetRoot.Position.Y, startPos.Z)
                 
                 localRoot.CFrame = CFrame.new(startPos, targetRoot.Position)
                 
                 config.LastPosition = startPos
                 config.OriginalGroundHeight = startPos.Y
+                config.CurrentHeight = startPos.Y
+                config.TargetHeight = startPos.Y
                 config.CurrentVelocity = Vector3.new(0, 0, 0)
                 config.JumpStartAttachment = attachmentType
                 config.JumpStartDistance = desiredDistance
+                
+                config.PositionBuffer = {targetRoot.Position}
+                config.TimeBuffer = {tick()}
+                config.LastTargetVelocity = targetRoot.Velocity
+                config.LastUpdateTime = tick()
             end
         end
     else
@@ -926,7 +1042,7 @@ function MainModule.ToggleKillaura(enabled)
     
     local heartbeatConn = game:GetService("RunService").Heartbeat:Connect(function(deltaTime)
         if not config.Enabled then return end
-        updateUltraFastSync(deltaTime)
+        updateUltraSmoothSync(deltaTime)
     end)
     
     table.insert(config.Connections, heartbeatConn)
@@ -947,11 +1063,16 @@ function MainModule.ToggleKillaura(enabled)
             config.AnimationLiftActive = false
             config.LastAnimationState = false
             config.JumpSync = false
-            config.JumpStartPosition = nil
             config.CurrentVelocity = Vector3.new(0, 0, 0)
             config.JumpStartAttachment = "behind"
             config.JumpStartDistance = config.BehindDistance
             config.InitialTargetSet = false
+            config.CurrentHeight = 0
+            config.TargetHeight = 0
+            config.PositionBuffer = {}
+            config.VelocityBuffer = {}
+            config.TimeBuffer = {}
+            config.StabilityTime = 0
             
             local closestPlayer = findClosestPlayer(true)
             if closestPlayer then
@@ -974,11 +1095,16 @@ function MainModule.ToggleKillaura(enabled)
                 config.AnimationLiftActive = false
                 config.LastAnimationState = false
                 config.JumpSync = false
-                config.JumpStartPosition = nil
                 config.CurrentVelocity = Vector3.new(0, 0, 0)
                 config.JumpStartAttachment = "behind"
                 config.JumpStartDistance = config.BehindDistance
                 config.InitialTargetSet = false
+                config.CurrentHeight = 0
+                config.TargetHeight = 0
+                config.PositionBuffer = {}
+                config.VelocityBuffer = {}
+                config.TimeBuffer = {}
+                config.StabilityTime = 0
                 
                 local closestPlayer = findClosestPlayer(true)
                 if closestPlayer then
