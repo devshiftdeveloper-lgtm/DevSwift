@@ -204,8 +204,8 @@ MainModule.Killaura = {
     FrontDistance = 19,
     SpeedThreshold = 18,
     
-    MovementSpeed = 120,
-    RotationSpeed = 60,
+    MovementSpeed = 150,
+    RotationSpeed = 80,
     Smoothness = 0.85,
     JumpSyncSmoothness = 0.92,
     
