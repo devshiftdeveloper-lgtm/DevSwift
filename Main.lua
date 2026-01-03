@@ -2029,8 +2029,10 @@ end
 MainModule.SpikesKillFeature = {
     Enabled = false,
     AnimationIds = {
-        "rbxassetid://105341857343164",  -- Первая анимация
-        "rbxassetid://95623680038308"    -- Вторая анимация
+        "rbxassetid://105341857343164",
+        "rbxassetid://95623680038308",
+        "rbxassetid://106191977814264",
+        "rbxassetid://118039465583394"
     },
     SpikesPosition = nil,
     PlatformHeightOffset = 5,
