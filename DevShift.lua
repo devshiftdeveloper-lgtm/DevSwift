@@ -242,6 +242,7 @@ end
 
 task.spawn(createAimSightGUI)
 
+-- Создаем основной GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "DevShiftGUI"
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
@@ -254,10 +255,9 @@ local background = Instance.new("Frame")
 background.Name = "Background"
 background.Size = UDim2.new(1, 0, 1, 0)
 background.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-background.BackgroundTransparency = 0.95
+background.BackgroundTransparency = 1 -- Начальная прозрачность 1
 background.BorderSizePixel = 0
 background.ZIndex = 1
-background.Visible = false
 background.Parent = screenGui
 
 local mainContainer = Instance.new("Frame")
@@ -266,10 +266,9 @@ mainContainer.Size = isMobile and UDim2.new(0.92, 0, 0.85, 0) or UDim2.new(0, 78
 mainContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 mainContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
 mainContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-mainContainer.BackgroundTransparency = 1
+mainContainer.BackgroundTransparency = 1 -- Начальная прозрачность 1
 mainContainer.BorderSizePixel = 0
 mainContainer.ZIndex = 2
-mainContainer.Visible = false
 mainContainer.Parent = screenGui
 
 local corner = Instance.new("UICorner")
@@ -296,7 +295,7 @@ local innerBackground = Instance.new("Frame")
 innerBackground.Size = UDim2.new(1, -8, 1, -8)
 innerBackground.Position = UDim2.new(0, 4, 0, 4)
 innerBackground.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
-innerBackground.BackgroundTransparency = 0.3
+innerBackground.BackgroundTransparency = 1 -- Начальная прозрачность 1
 innerBackground.BorderSizePixel = 0
 innerBackground.ZIndex = 2
 innerBackground.Parent = mainContainer
@@ -313,9 +312,9 @@ contentContainer.ZIndex = 3
 contentContainer.Parent = mainContainer
 
 local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, isMobile and 60 or 66)
+topBar.Size = UDim2.new(1, 0, 0, isMobile and 70 or 66) -- Увеличил высоту для мобильных
 topBar.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-topBar.BackgroundTransparency = 1
+topBar.BackgroundTransparency = 1 -- Начальная прозрачность 1
 topBar.BorderSizePixel = 0
 topBar.ZIndex = 4
 topBar.Parent = contentContainer
@@ -325,7 +324,7 @@ topBarCorner.CornerRadius = UDim.new(0, 12)
 topBarCorner.Parent = topBar
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = isMobile and UDim2.new(1, -75, 1, 0) or UDim2.new(1, -50, 1, 0)
+titleLabel.Size = isMobile and UDim2.new(1, -80, 1, 0) or UDim2.new(1, -50, 1, 0) -- Увеличил отступ
 titleLabel.Position = UDim2.new(0, isMobile and 20 or 25, 0, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text = "DEVSHIFT"
@@ -341,23 +340,23 @@ local closeButton
 if isMobile then
     closeButton = Instance.new("TextButton")
     closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 48, 0, 48)
-    closeButton.Position = UDim2.new(1, -15, 0.5, -24)
+    closeButton.Size = UDim2.new(0, 56, 0, 56) -- Увеличил размер для мобильных
+    closeButton.Position = UDim2.new(1, -15, 0.5, 0)
     closeButton.AnchorPoint = Vector2.new(1, 0.5)
     closeButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    closeButton.BackgroundTransparency = 1
+    closeButton.BackgroundTransparency = 1 -- Начальная прозрачность 1
     closeButton.BorderSizePixel = 0
     closeButton.Text = "✕"
     closeButton.TextColor3 = Color3.fromRGB(220, 220, 220)
-    closeButton.TextSize = 30
+    closeButton.TextSize = 34 -- Увеличил размер текста
     closeButton.Font = Enum.Font.GothamBold
     closeButton.TextTransparency = 1
     closeButton.ZIndex = 6
-    closeButton.AutoButtonColor = false
+    closeButton.AutoButtonColor = true -- Включил AutoButtonColor для мобильных
     closeButton.Parent = topBar
 
     local closeButtonCorner = Instance.new("UICorner")
-    closeButtonCorner.CornerRadius = UDim.new(0, 10)
+    closeButtonCorner.CornerRadius = UDim.new(0, 12) -- Увеличил радиус
     closeButtonCorner.Parent = closeButton
 
     local closeButtonStroke = Instance.new("UIStroke")
@@ -369,17 +368,17 @@ if isMobile then
 end
 
 local mainContent = Instance.new("Frame")
-mainContent.Size = UDim2.new(1, 0, 1, -(isMobile and 70 or 76))
-mainContent.Position = UDim2.new(0, 0, 0, isMobile and 70 or 76)
+mainContent.Size = UDim2.new(1, 0, 1, -(isMobile and 80 or 76)) -- Увеличил отступ
+mainContent.Position = UDim2.new(0, 0, 0, isMobile and 80 or 76) -- Увеличил отступ
 mainContent.BackgroundTransparency = 1
 mainContent.ZIndex = 4
 mainContent.Parent = contentContainer
 
 local tabsContainer = Instance.new("Frame")
-tabsContainer.Size = isMobile and UDim2.new(1, 0, 0, 52) or UDim2.new(0.2, -5, 1, 0)
+tabsContainer.Size = isMobile and UDim2.new(1, 0, 0, 60) or UDim2.new(0.2, -5, 1, 0) -- Увеличил высоту
 tabsContainer.Position = isMobile and UDim2.new(0, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
 tabsContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-tabsContainer.BackgroundTransparency = 1
+tabsContainer.BackgroundTransparency = 1 -- Начальная прозрачность 1
 tabsContainer.BorderSizePixel = 0
 tabsContainer.ZIndex = 5
 tabsContainer.Parent = mainContent
@@ -405,10 +404,10 @@ tabsListLayout.FillDirection = isMobile and Enum.FillDirection.Horizontal or Enu
 tabsListLayout.Parent = tabsList
 
 local functionsContainer = Instance.new("Frame")
-functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -62) or UDim2.new(0.8, -5, 1, 0)
-functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 57) or UDim2.new(0.2, 5, 0, 0)
+functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -70) or UDim2.new(0.8, -5, 1, 0) -- Увеличил отступ
+functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 65) or UDim2.new(0.2, 5, 0, 0) -- Увеличил отступ
 functionsContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-functionsContainer.BackgroundTransparency = 1
+functionsContainer.BackgroundTransparency = 1 -- Начальная прозрачность 1
 functionsContainer.BorderSizePixel = 0
 functionsContainer.ZIndex = 5
 functionsContainer.Parent = mainContent
@@ -417,38 +416,42 @@ local functionsCorner = Instance.new("UICorner")
 functionsCorner.CornerRadius = UDim.new(0, 12)
 functionsCorner.Parent = functionsContainer
 
-local openButton = Instance.new("TextButton")
-openButton.Name = "OpenButton"
-openButton.Size = UDim2.new(0, 60, 0, 60)
-openButton.Position = UDim2.new(0, 20, 1, -90)
-openButton.AnchorPoint = Vector2.new(0, 1)
-openButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-openButton.BackgroundTransparency = 0.1
-openButton.BorderSizePixel = 0
-openButton.Text = "☰"
-openButton.TextColor3 = Color3.fromRGB(240, 240, 240)
-openButton.TextSize = 28
-openButton.Font = Enum.Font.GothamBold
-openButton.Visible = isMobile
-openButton.ZIndex = 1000
-openButton.AutoButtonColor = true
-openButton.Parent = screenGui
+-- Кнопка открытия меню (только для мобильных)
+local openButton
+if isMobile then
+    openButton = Instance.new("TextButton")
+    openButton.Name = "OpenButton"
+    openButton.Size = UDim2.new(0, 70, 0, 70) -- Увеличил размер
+    openButton.Position = UDim2.new(0, 25, 1, -100) -- Изменил позицию
+    openButton.AnchorPoint = Vector2.new(0, 1)
+    openButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    openButton.BackgroundTransparency = 0.1
+    openButton.BorderSizePixel = 0
+    openButton.Text = "☰"
+    openButton.TextColor3 = Color3.fromRGB(240, 240, 240)
+    openButton.TextSize = 32 -- Увеличил размер текста
+    openButton.Font = Enum.Font.GothamBold
+    openButton.Visible = true -- Всегда видима когда меню закрыто
+    openButton.ZIndex = 1000
+    openButton.AutoButtonColor = true
+    openButton.Parent = screenGui
 
-local openButtonCorner = Instance.new("UICorner")
-openButtonCorner.CornerRadius = UDim.new(0, 14)
-openButtonCorner.Parent = openButton
+    local openButtonCorner = Instance.new("UICorner")
+    openButtonCorner.CornerRadius = UDim.new(0, 16) -- Увеличил радиус
+    openButtonCorner.Parent = openButton
 
-local openButtonStroke = Instance.new("UIStroke")
-openButtonStroke.Color = Color3.fromRGB(60, 60, 60)
-openButtonStroke.Thickness = 2.5
-openButtonStroke.ZIndex = 1000
-openButtonStroke.Parent = openButton
+    local openButtonStroke = Instance.new("UIStroke")
+    openButtonStroke.Color = Color3.fromRGB(60, 60, 60)
+    openButtonStroke.Thickness = 2.5
+    openButtonStroke.ZIndex = 1000
+    openButtonStroke.Parent = openButton
+end
 
 local toggleElements = {}
 
 local function createModernToggle(parent, text, state, callback)
     local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = UDim2.new(1, -12, 0, 50)
+    toggleFrame.Size = UDim2.new(1, -12, 0, isMobile and 60 or 50) -- Увеличил высоту для мобильных
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.ZIndex = 10
     toggleFrame.Parent = parent
@@ -479,7 +482,7 @@ local function createModernToggle(parent, text, state, callback)
     textLabel.BackgroundTransparency = 1
     textLabel.Text = text
     textLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-    textLabel.TextSize = 14
+    textLabel.TextSize = isMobile and 16 or 14 -- Увеличил размер текста для мобильных
     textLabel.Font = Enum.Font.GothamMedium
     textLabel.TextXAlignment = Enum.TextXAlignment.Left
     textLabel.ZIndex = 12
@@ -487,7 +490,7 @@ local function createModernToggle(parent, text, state, callback)
     
     local toggleSwitch = Instance.new("Frame")
     toggleSwitch.Name = "ToggleSwitch"
-    toggleSwitch.Size = UDim2.new(0, 48, 0, 24)
+    toggleSwitch.Size = UDim2.new(0, isMobile and 58 or 48, 0, isMobile and 28 or 24) -- Увеличил размер для мобильных
     toggleSwitch.Position = UDim2.new(1, -10, 0.5, 0)
     toggleSwitch.AnchorPoint = Vector2.new(1, 0.5)
     toggleSwitch.BackgroundColor3 = state and Color3.fromRGB(40, 100, 40) or Color3.fromRGB(45, 45, 45)
@@ -507,7 +510,7 @@ local function createModernToggle(parent, text, state, callback)
     
     local switchHandle = Instance.new("Frame")
     switchHandle.Name = "Handle"
-    switchHandle.Size = UDim2.new(0, 18, 0, 18)
+    switchHandle.Size = UDim2.new(0, isMobile and 22 or 18, 0, isMobile and 22 or 18) -- Увеличил размер для мобильных
     switchHandle.Position = state and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0)
     switchHandle.AnchorPoint = Vector2.new(state and 1 or 0, 0.5)
     switchHandle.BackgroundColor3 = Color3.fromRGB(250, 250, 250)
@@ -598,13 +601,13 @@ end
 
 local function createModernButton(parent, text, callback)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, -12, 0, 50)
+    button.Size = UDim2.new(1, -12, 0, isMobile and 60 or 50) -- Увеличил высоту для мобильных
     button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     button.BackgroundTransparency = 0
     button.BorderSizePixel = 0
     button.Text = text
     button.TextColor3 = Color3.fromRGB(240, 240, 240)
-    button.TextSize = 14
+    button.TextSize = isMobile and 16 or 14 -- Увеличил размер текста для мобильных
     button.Font = Enum.Font.GothamMedium
     button.AutoButtonColor = true
     button.ZIndex = 10
@@ -650,13 +653,13 @@ end
 local function createTabButton(tabName)
     local tabButton = Instance.new("TextButton")
     tabButton.Name = tabName .. "Tab"
-    tabButton.Size = isMobile and UDim2.new(0, 100, 0, 46) or UDim2.new(1, 0, 0, 44)
+    tabButton.Size = isMobile and UDim2.new(0, 120, 0, 52) or UDim2.new(1, 0, 0, 44) -- Увеличил размер для мобильных
     tabButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    tabButton.BackgroundTransparency = 1
+    tabButton.BackgroundTransparency = 1 -- Начальная прозрачность 1
     tabButton.BorderSizePixel = 0
     tabButton.Text = tabName:upper()
     tabButton.TextColor3 = Color3.fromRGB(180, 180, 180)
-    tabButton.TextSize = isMobile and 12 or 13
+    tabButton.TextSize = isMobile and 14 or 13 -- Увеличил размер текста
     tabButton.Font = Enum.Font.GothamMedium
     tabButton.TextTransparency = 1
     tabButton.ZIndex = 7
@@ -709,7 +712,7 @@ local function createGamesContent()
     scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
     scrollingFrame.BackgroundTransparency = 1
     scrollingFrame.BorderSizePixel = 0
-    scrollingFrame.ScrollBarThickness = 8
+    scrollingFrame.ScrollBarThickness = isMobile and 10 or 8 -- Увеличил толщину для мобильных
     scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(40, 40, 40)
     scrollingFrame.ScrollBarImageTransparency = 0.5
     scrollingFrame.ZIndex = 9
@@ -819,12 +822,12 @@ local function createGamesContent()
         sectionFrame.Parent = gamesContainer
         
         local sectionTitle = Instance.new("TextLabel")
-        sectionTitle.Size = UDim2.new(1, 0, 0, 42)
+        sectionTitle.Size = UDim2.new(1, 0, 0, isMobile and 50 or 42) -- Увеличил высоту для мобильных
         sectionTitle.Position = UDim2.new(0, 0, 0, 1)
         sectionTitle.BackgroundTransparency = 1
         sectionTitle.Text = section.title
         sectionTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
-        sectionTitle.TextSize = 16
+        sectionTitle.TextSize = isMobile and 18 or 16 -- Увеличил размер текста
         sectionTitle.Font = Enum.Font.GothamBold
         sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
         sectionTitle.ZIndex = 12
@@ -838,7 +841,7 @@ local function createGamesContent()
         
         local itemsContainer = Instance.new("Frame")
         itemsContainer.Size = UDim2.new(1, 0, 0, 0)
-        itemsContainer.Position = UDim2.new(0, 0, 0, 47)
+        itemsContainer.Position = UDim2.new(0, 0, 0, isMobile and 55 or 47) -- Увеличил отступ
         itemsContainer.BackgroundTransparency = 1
         itemsContainer.ZIndex = 12
         itemsContainer.Parent = sectionFrame
@@ -870,9 +873,9 @@ local function createGamesContent()
             end
         end
         
-        local totalItemHeight = itemCount * 50 + (itemCount - 1) * 12
+        local totalItemHeight = itemCount * (isMobile and 60 or 50) + (itemCount - 1) * 12
         itemsContainer.Size = UDim2.new(1, 0, 0, totalItemHeight)
-        sectionFrame.Size = UDim2.new(1, 0, 0, 47 + totalItemHeight)
+        sectionFrame.Size = UDim2.new(1, 0, 0, (isMobile and 55 or 47) + totalItemHeight)
         
         createdSections[section.title] = true
     end
@@ -953,32 +956,72 @@ local function showMenu()
     
     mainContainer.Visible = true
     background.Visible = true
-    if isMobile then
+    if isMobile and openButton then
         openButton.Visible = false
     end
     
-    mainContainer.BackgroundTransparency = 0
-    mainStroke.Transparency = 0
-    accentStroke.Transparency = 0
-    background.BackgroundTransparency = 0.85
+    -- Анимация появления
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     
-    topBar.BackgroundTransparency = 0
-    titleLabel.TextTransparency = 0
+    TweenService:Create(mainContainer, tweenInfo, {
+        BackgroundTransparency = 0
+    }):Play()
+    
+    TweenService:Create(mainStroke, tweenInfo, {
+        Transparency = 0
+    }):Play()
+    
+    TweenService:Create(accentStroke, tweenInfo, {
+        Transparency = 0
+    }):Play()
+    
+    TweenService:Create(background, tweenInfo, {
+        BackgroundTransparency = 0.85
+    }):Play()
+    
+    TweenService:Create(innerBackground, tweenInfo, {
+        BackgroundTransparency = 0.3
+    }):Play()
+    
+    TweenService:Create(topBar, tweenInfo, {
+        BackgroundTransparency = 0
+    }):Play()
+    
+    TweenService:Create(titleLabel, tweenInfo, {
+        TextTransparency = 0
+    }):Play()
+    
     if closeButton then
-        closeButton.BackgroundTransparency = 0
-        closeButton.TextTransparency = 0
-        closeButtonStroke.Transparency = 0
+        TweenService:Create(closeButton, tweenInfo, {
+            BackgroundTransparency = 0,
+            TextTransparency = 0
+        }):Play()
+        
+        TweenService:Create(closeButtonStroke, tweenInfo, {
+            Transparency = 0
+        }):Play()
     end
     
-    tabsContainer.BackgroundTransparency = 0
-    functionsContainer.BackgroundTransparency = 0
+    TweenService:Create(tabsContainer, tweenInfo, {
+        BackgroundTransparency = 0
+    }):Play()
     
+    TweenService:Create(functionsContainer, tweenInfo, {
+        BackgroundTransparency = 0
+    }):Play()
+    
+    -- Показываем кнопки вкладок
     for _, tabButton in pairs(tabButtons) do
-        tabButton.BackgroundTransparency = 0
-        tabButton.TextTransparency = 0
+        TweenService:Create(tabButton, tweenInfo, {
+            BackgroundTransparency = 0,
+            TextTransparency = 0
+        }):Play()
+        
         local stroke = tabButton:FindFirstChild("UIStroke")
         if stroke then
-            stroke.Transparency = 0
+            TweenService:Create(stroke, tweenInfo, {
+                Transparency = 0
+            }):Play()
         end
     end
     
@@ -988,35 +1031,77 @@ end
 local function hideMenu()
     if not isMenuOpen then return end
     
-    mainContainer.BackgroundTransparency = 1
-    mainStroke.Transparency = 1
-    accentStroke.Transparency = 1
-    background.BackgroundTransparency = 0.95
+    -- Анимация исчезновения
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     
-    titleLabel.TextTransparency = 1
+    TweenService:Create(mainContainer, tweenInfo, {
+        BackgroundTransparency = 1
+    }):Play()
+    
+    TweenService:Create(mainStroke, tweenInfo, {
+        Transparency = 1
+    }):Play()
+    
+    TweenService:Create(accentStroke, tweenInfo, {
+        Transparency = 1
+    }):Play()
+    
+    TweenService:Create(background, tweenInfo, {
+        BackgroundTransparency = 1
+    }):Play()
+    
+    TweenService:Create(innerBackground, tweenInfo, {
+        BackgroundTransparency = 1
+    }):Play()
+    
+    TweenService:Create(titleLabel, tweenInfo, {
+        TextTransparency = 1
+    }):Play()
+    
     if closeButton then
-        closeButton.BackgroundTransparency = 1
-        closeButton.TextTransparency = 1
-        closeButtonStroke.Transparency = 1
+        TweenService:Create(closeButton, tweenInfo, {
+            BackgroundTransparency = 1,
+            TextTransparency = 1
+        }):Play()
+        
+        TweenService:Create(closeButtonStroke, tweenInfo, {
+            Transparency = 1
+        }):Play()
     end
-    topBar.BackgroundTransparency = 1
-    tabsContainer.BackgroundTransparency = 1
-    functionsContainer.BackgroundTransparency = 1
     
+    TweenService:Create(topBar, tweenInfo, {
+        BackgroundTransparency = 1
+    }):Play()
+    
+    TweenService:Create(tabsContainer, tweenInfo, {
+        BackgroundTransparency = 1
+    }):Play()
+    
+    TweenService:Create(functionsContainer, tweenInfo, {
+        BackgroundTransparency = 1
+    }):Play()
+    
+    -- Скрываем кнопки вкладок
     for _, tabButton in pairs(tabButtons) do
-        tabButton.BackgroundTransparency = 1
-        tabButton.TextTransparency = 1
+        TweenService:Create(tabButton, tweenInfo, {
+            BackgroundTransparency = 1,
+            TextTransparency = 1
+        }):Play()
+        
         local stroke = tabButton:FindFirstChild("UIStroke")
         if stroke then
-            stroke.Transparency = 1
+            TweenService:Create(stroke, tweenInfo, {
+                Transparency = 1
+            }):Play()
         end
     end
     
-    task.wait(0.1)
+    -- Ждем завершения анимации
+    task.wait(0.35)
     
     mainContainer.Visible = false
     background.Visible = false
-    if isMobile then
+    if isMobile and openButton then
         openButton.Visible = true
     end
     
@@ -1037,6 +1122,7 @@ local function toggleMenu()
     end
 end
 
+-- Назначаем обработчики кликов на вкладки
 for tabName, tabButton in pairs(tabButtons) do
     tabButton.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -1045,6 +1131,7 @@ for tabName, tabButton in pairs(tabButtons) do
     end)
 end
 
+-- Обработчик для кнопки закрытия на мобильных
 if closeButton then
     closeButton.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -1075,6 +1162,28 @@ if closeButton then
     end
 end
 
+-- Обработчик для кнопки открытия на мобильных
+if isMobile and openButton then
+    openButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            toggleMenu()
+        end
+    end)
+    
+    openButton.MouseButton1Down:Connect(function()
+        TweenService:Create(openButton, TweenInfo.new(0.1), {
+            BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        }):Play()
+    end)
+    
+    openButton.MouseButton1Up:Connect(function()
+        TweenService:Create(openButton, TweenInfo.new(0.1), {
+            BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        }):Play()
+    end)
+end
+
+-- Hotkeys для ПК
 if not isMobile and UserInputService.MouseEnabled then
     for tabName, tabButton in pairs(tabButtons) do
         tabButton.MouseEnter:Connect(function()
@@ -1141,26 +1250,7 @@ if not isMobile and UserInputService.MouseEnabled then
     end)
 end
 
-if isMobile then
-    openButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            toggleMenu()
-        end
-    end)
-    
-    openButton.MouseButton1Down:Connect(function()
-        TweenService:Create(openButton, TweenInfo.new(0.1), {
-            BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        }):Play()
-    end)
-    
-    openButton.MouseButton1Up:Connect(function()
-        TweenService:Create(openButton, TweenInfo.new(0.1), {
-            BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        }):Play()
-    end)
-end
-
+-- Автоматически показываем меню через 1.5 секунды
 task.spawn(function()
     task.wait(1.5)
     showMenu()
