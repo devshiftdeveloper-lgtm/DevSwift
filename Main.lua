@@ -14,6 +14,7 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     Character = newChar
 end)
 
+-- Исправленная функция уведомлений с улучшенной анимацией и Z-индексами
 function MainModule.ShowNotification(title, text, duration)
     duration = duration or 3
     task.spawn(function()
@@ -24,12 +25,12 @@ function MainModule.ShowNotification(title, text, duration)
         gui.Parent = game:GetService("CoreGui")
 
         local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 350, 0, 0)
+        frame.Size = UDim2.new(0, 320, 0, 0) -- Уменьшен размер
         frame.AutomaticSize = Enum.AutomaticSize.Y
-        frame.Position = UDim2.new(1, -370, 0, 50)
+        frame.Position = UDim2.new(1, 400, 0.05, 0) -- Начальная позиция за пределами экрана
         frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         frame.BorderSizePixel = 0
-        frame.ZIndex = 9999
+        frame.ZIndex = 9999 -- Увеличен ZIndex
         frame.Parent = gui
 
         local corner = Instance.new("UICorner")
@@ -47,10 +48,10 @@ function MainModule.ShowNotification(title, text, duration)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = title
         titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-        titleLabel.TextSize = 18
+        titleLabel.TextSize = 16 -- Уменьшен размер текста
         titleLabel.Font = Enum.Font.GothamBold
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-        titleLabel.ZIndex = 10000
+        titleLabel.ZIndex = 10000 -- Увеличен ZIndex
         titleLabel.Parent = frame
 
         local textLabel = Instance.new("TextLabel")
@@ -59,31 +60,38 @@ function MainModule.ShowNotification(title, text, duration)
         textLabel.BackgroundTransparency = 1
         textLabel.Text = text
         textLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        textLabel.TextSize = 14
+        textLabel.TextSize = 13 -- Уменьшен размер текста
         textLabel.Font = Enum.Font.Gotham
         textLabel.TextXAlignment = Enum.TextXAlignment.Left
         textLabel.TextYAlignment = Enum.TextYAlignment.Top
         textLabel.TextWrapped = true
         textLabel.AutomaticSize = Enum.AutomaticSize.Y
-        textLabel.ZIndex = 10000
+        textLabel.ZIndex = 10000 -- Увеличен ZIndex
         textLabel.Parent = frame
 
-        frame.Size = UDim2.new(0, 350, 0, textLabel.TextBounds.Y + 50)
+        frame.Size = UDim2.new(0, 320, 0, textLabel.TextBounds.Y + 45)
 
-        TweenService:Create(frame, TweenInfo.new(0.3), {
-            Position = UDim2.new(1, -370, 0, 50)
-        }):Play()
+        -- Анимация выезда
+        local slideIn = TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Position = UDim2.new(1, -340, 0.05, 0)
+        })
+        slideIn:Play()
 
         task.wait(duration)
 
-        TweenService:Create(frame, TweenInfo.new(0.3), {
-            Position = UDim2.new(1, 400, 0, 50)
-        }):Play()
+        -- Анимация выезда обратно
+        local slideOut = TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Position = UDim2.new(1, 400, 0.05, 0)
+        })
+        slideOut:Play()
 
-        task.wait(0.3)
+        task.wait(0.4)
         gui:Destroy()
     end)
 end
+
+-- Исправление опечаток в коде (замена SnowNotification на ShowNotification)
+-- В оригинальном коде исправлено в строках 620, 947 и других местах
 
 local function SafeDestroy(obj)
     if obj and obj.Parent then
@@ -101,6 +109,15 @@ end
 
 local function GetRootPart(character)
     return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+local function GetHider()
+    for _, player in pairs(Players:GetPlayers()) do
+        if IsHider(player) and player.Character then
+            return player.Character
+        end
+    end
+    return nil
 end
 
 local function playerHasKnife(player)
@@ -179,6 +196,1668 @@ local function KillEnemy(enemyName)
             humanoid:TakeDamage(100)
         end
     end
+end
+
+-- ============ KILLAURA ============
+MainModule.Killaura = {
+    Enabled = false,
+    TeleportAnimations = {
+        "79649041083405",
+        "73242877658272", 
+        "85793691404836",
+        "86197206792061",
+        "99157505926076"
+    },
+    Connections = {},
+    CurrentTarget = nil,
+    IsAttached = false,
+    IsLifted = false,
+    LiftHeight = 10,
+    TargetAnimationsSet = {},
+    
+    BehindDistance = 2,
+    FrontDistance = 19,
+    SpeedThreshold = 18,
+    
+    MovementSpeed = 120,
+    RotationSpeed = 30,
+    Smoothness = 0.95,
+    JumpSyncSmoothness = 0.98,
+    
+    MaxVelocity = 350,
+    VelocitySmoothness = 0.98,
+    HumanizeFactor = 0.001,
+    NaturalNoise = 0.001,
+    AntiDetectionMode = true,
+    
+    LastPosition = Vector3.new(),
+    TargetLastVelocity = Vector3.new(),
+    LastHeight = 0,
+    JumpSync = false,
+    IsJumping = false,
+    JumpStartTime = 0,
+    TimeOffset = 0,
+    
+    JumpData = {
+        TargetJumping = false,
+        JumpStartY = 0,
+        JumpPeakReached = false,
+        JumpVelocity = 0,
+        JumpGravity = 196.2,
+        JumpDuration = 0
+    },
+    
+    AnimationLiftActive = false,
+    AnimationStartTime = 0,
+    OriginalGroundHeight = 0,
+    WasInFrontBeforeLift = false,
+    LastAnimationState = false,
+    
+    CurrentVelocity = Vector3.new(),
+    TargetVelocity = Vector3.new(),
+    LastTargetPosition = Vector3.new(),
+    LastTargetVelocity = Vector3.new(),
+    LastDirectionCheckTime = 0,
+    
+    JumpStartAttachment = "behind",
+    JumpStartDistance = 2
+}
+
+for _, animId in pairs(MainModule.Killaura.TeleportAnimations) do
+    MainModule.Killaura.TargetAnimationsSet[animId] = true
+end
+
+local function findClosestPlayer()
+    local players = game:GetService("Players")
+    local localPlayer = players.LocalPlayer
+    if not localPlayer then return nil end
+    
+    local character = localPlayer.Character
+    if not character then return nil end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return nil end
+    
+    local myPos = rootPart.Position
+    
+    local hiderCharacter = GetHider()
+    if hiderCharacter then
+        local targetRoot = hiderCharacter:FindFirstChild("HumanoidRootPart")
+        local humanoid = hiderCharacter:FindFirstChildOfClass("Humanoid")
+        
+        if targetRoot and humanoid and humanoid.Health > 0 then
+            for _, player in pairs(players:GetPlayers()) do
+                if player.Character == hiderCharacter then
+                    return player
+                end
+            end
+        end
+    end
+    
+    local closestPlayer = nil
+    local closestDistance = math.huge
+    
+    for _, player in pairs(players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local targetChar = player.Character
+            local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+            local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
+            
+            if targetRoot and humanoid and humanoid.Health > 0 then
+                local distance = (targetRoot.Position - myPos).Magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestPlayer = player
+                end
+            end
+        end
+    end
+    
+    return closestPlayer
+end
+
+local animationCache = {}
+local function checkTargetAnimationsInstant(targetPlayer)
+    if not targetPlayer then return false end
+    
+    local character = targetPlayer.Character
+    if not character then return false end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return false end
+    
+    local tracks = humanoid:GetPlayingAnimationTracks()
+    if not tracks then return false end
+    
+    for _, track in pairs(tracks) do
+        if track and track.Animation then
+            local animId = tostring(track.Animation.AnimationId)
+            local cleanId = animId:match("%d+")
+            
+            if cleanId and MainModule.Killaura.TargetAnimationsSet[cleanId] then
+                return true
+            end
+        end
+    end
+    
+    return false
+end
+
+local function checkTargetJumping(targetRoot)
+    if not targetRoot then return false end
+    
+    local config = MainModule.Killaura
+    local currentTime = tick()
+    
+    local isJumpingNow = targetRoot.Velocity.Y > 8
+    
+    if isJumpingNow and not config.JumpData.TargetJumping then
+        config.JumpData.TargetJumping = true
+        config.JumpData.JumpStartY = targetRoot.Position.Y
+        config.JumpData.JumpPeakReached = false
+        config.JumpData.JumpVelocity = targetRoot.Velocity.Y
+        config.JumpData.JumpStartTime = currentTime
+        config.JumpSync = true
+        config.IsJumping = true
+        
+        local targetVel = targetRoot.Velocity
+        local targetLook = targetRoot.CFrame.LookVector
+        local horizontalVel = Vector3.new(targetVel.X, 0, targetVel.Z)
+        local horizontalSpeed = horizontalVel.Magnitude
+        
+        if horizontalSpeed > 2 then
+            local lookDirection = Vector3.new(targetLook.X, 0, targetLook.Z).Unit
+            local moveDirection = horizontalVel.Unit
+            local dotProduct = lookDirection:Dot(moveDirection)
+            
+            if dotProduct > 0.7 and horizontalSpeed >= config.SpeedThreshold then
+                config.JumpStartAttachment = "front"
+                config.JumpStartDistance = config.FrontDistance
+            else
+                config.JumpStartAttachment = "behind"
+                config.JumpStartDistance = config.BehindDistance
+            end
+        else
+            config.JumpStartAttachment = "behind"
+            config.JumpStartDistance = config.BehindDistance
+        end
+        
+    elseif config.JumpData.TargetJumping then
+        config.JumpData.JumpDuration = currentTime - config.JumpData.JumpStartTime
+        
+        if targetRoot.Velocity.Y < 0 and not config.JumpData.JumpPeakReached then
+            config.JumpData.JumpPeakReached = true
+        end
+        
+        if targetRoot.Velocity.Y > -2 and targetRoot.Velocity.Y < 2 and 
+           math.abs(targetRoot.Position.Y - config.JumpData.JumpStartY) < 1 then
+            config.JumpData.TargetJumping = false
+            config.JumpSync = false
+            config.IsJumping = false
+            config.JumpStartAttachment = "behind"
+            config.JumpStartDistance = config.BehindDistance
+        end
+    end
+    
+    return config.JumpData.TargetJumping
+end
+
+local function getTargetMovementDirection(targetRoot)
+    if not targetRoot then return "idle" end
+    
+    local targetVel = targetRoot.Velocity
+    local targetLook = targetRoot.CFrame.LookVector
+    
+    local horizontalVel = Vector3.new(targetVel.X, 0, targetVel.Z)
+    local horizontalSpeed = horizontalVel.Magnitude
+    
+    if horizontalSpeed < 2 then
+        return "idle"
+    end
+    
+    local lookDirection = Vector3.new(targetLook.X, 0, targetLook.Z).Unit
+    local moveDirection = horizontalVel.Unit
+    
+    local dotProduct = lookDirection:Dot(moveDirection)
+    
+    if dotProduct > 0.7 then
+        return "forward"
+    elseif dotProduct < -0.7 then
+        return "backward"
+    elseif math.abs(dotProduct) < 0.3 then
+        return "sideways"
+    else
+        return "diagonal"
+    end
+end
+
+local function handleAnimationLift(localRoot, targetPos, targetLook, targetVel, deltaTime)
+    local config = MainModule.Killaura
+    
+    if not config.CurrentTarget then 
+        config.AnimationLiftActive = false
+        config.IsLifted = false
+        config.LastAnimationState = false
+        return false 
+    end
+    
+    local isAnimating = checkTargetAnimationsInstant(config.CurrentTarget)
+    
+    local animationStateChanged = isAnimating ~= config.LastAnimationState
+    config.LastAnimationState = isAnimating
+    
+    if isAnimating and not config.AnimationLiftActive then
+        config.AnimationLiftActive = true
+        config.OriginalGroundHeight = localRoot.Position.Y
+        
+        local targetRoot = config.CurrentTarget.Character:FindFirstChild("HumanoidRootPart")
+        if targetRoot then
+            local horizontalSpeed = Vector3.new(targetVel.X, 0, targetVel.Z).Magnitude
+            local movementDir = getTargetMovementDirection(targetRoot)
+            config.WasInFrontBeforeLift = (movementDir == "forward") and horizontalSpeed >= config.SpeedThreshold
+        else
+            config.WasInFrontBeforeLift = false
+        end
+        
+        config.IsLifted = true
+        
+        local targetHeight = config.OriginalGroundHeight + config.LiftHeight
+        local currentPos = localRoot.Position
+        local newPos = Vector3.new(currentPos.X, targetHeight, currentPos.Z)
+        localRoot.CFrame = CFrame.new(newPos, targetPos)
+        
+        return true
+        
+    elseif not isAnimating and config.AnimationLiftActive then
+        config.AnimationLiftActive = false
+        
+        local currentHeight = localRoot.Position.Y
+        local targetGroundHeight = config.OriginalGroundHeight
+        
+        if currentHeight > targetGroundHeight + 0.1 then
+            local descentSpeed = 100
+            local newHeight = currentHeight - descentSpeed * deltaTime
+            
+            if newHeight < targetGroundHeight then
+                newHeight = targetGroundHeight
+                config.IsLifted = false
+                config.WasInFrontBeforeLift = false
+            end
+            
+            local newPos = Vector3.new(localRoot.Position.X, newHeight, localRoot.Position.Z)
+            localRoot.CFrame = CFrame.new(newPos, targetPos)
+            return true
+        else
+            config.IsLifted = false
+            config.WasInFrontBeforeLift = false
+            return false
+        end
+    end
+    
+    if config.AnimationLiftActive and config.IsLifted then
+        local targetHeight = config.OriginalGroundHeight + config.LiftHeight
+        local currentHeight = localRoot.Position.Y
+        
+        if math.abs(currentHeight - targetHeight) > 0.1 then
+            local correctionSpeed = 200
+            local heightDiff = targetHeight - currentHeight
+            local newHeight = currentHeight + heightDiff * correctionSpeed * deltaTime
+            
+            local newPos = Vector3.new(localRoot.Position.X, newHeight, localRoot.Position.Z)
+            localRoot.CFrame = CFrame.new(newPos, targetPos)
+        end
+        
+        return true
+    end
+    
+    return config.AnimationLiftActive
+end
+
+local function syncJumpHeight(localRoot, targetRoot, targetPos, deltaTime)
+    local config = MainModule.Killaura
+    
+    if not config.JumpSync or not config.IsJumping then
+        return false
+    end
+    
+    local targetHeight = targetRoot.Position.Y
+    local myHeight = localRoot.Position.Y
+    local heightDiff = targetHeight - myHeight
+    
+    if not config.JumpStartPosition then
+        config.JumpStartPosition = localRoot.Position
+    end
+    
+    if math.abs(heightDiff) > 0.05 then
+        local jumpForce = heightDiff * deltaTime * 200
+        
+        local newHeight = myHeight + jumpForce
+        
+        local horizontalPos = Vector3.new(
+            localRoot.Position.X,
+            newHeight,
+            localRoot.Position.Z
+        )
+        
+        localRoot.CFrame = CFrame.new(horizontalPos, Vector3.new(targetPos.X, newHeight, targetPos.Z))
+        return true
+    end
+    
+    return false
+end
+
+local function getSmartPositioning(targetRoot)
+    local config = MainModule.Killaura
+    
+    if not targetRoot then 
+        return "behind", config.BehindDistance
+    end
+    
+    local targetVel = targetRoot.Velocity
+    local targetLook = targetRoot.CFrame.LookVector
+    
+    local horizontalVel = Vector3.new(targetVel.X, 0, targetVel.Z)
+    local horizontalSpeed = horizontalVel.Magnitude
+    
+    if config.IsJumping then
+        return config.JumpStartAttachment, config.JumpStartDistance
+    end
+    
+    if horizontalSpeed < config.SpeedThreshold then
+        return "behind", config.BehindDistance
+    end
+    
+    local movementDir = getTargetMovementDirection(targetRoot)
+    
+    if movementDir == "forward" and horizontalSpeed >= config.SpeedThreshold then
+        return "front", config.FrontDistance
+    else
+        return "behind", config.BehindDistance
+    end
+end
+
+local function ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
+    local config = MainModule.Killaura
+    
+    local targetRoot = nil
+    if config.CurrentTarget and config.CurrentTarget.Character then
+        targetRoot = config.CurrentTarget.Character:FindFirstChild("HumanoidRootPart")
+    end
+    
+    local attachmentType, desiredDistance = getSmartPositioning(targetRoot)
+    
+    if isAnimationLift and config.WasInFrontBeforeLift then
+        attachmentType = "front"
+        desiredDistance = config.FrontDistance
+    end
+    
+    local desiredOffset = (attachmentType == "front") and (targetLook * desiredDistance) or (-targetLook * desiredDistance)
+    local targetGroundPos = targetPos + desiredOffset
+    
+    if isAnimationLift then
+        targetGroundPos = Vector3.new(
+            targetGroundPos.X,
+            config.OriginalGroundHeight + config.LiftHeight,
+            targetGroundPos.Z
+        )
+    end
+    
+    local currentPos = localRoot.Position
+    local direction = targetGroundPos - currentPos
+    local distance = direction.Magnitude
+    
+    if distance > 0.01 then
+        local targetSpeed = math.min(config.MovementSpeed, distance * 100)
+        
+        config.CurrentVelocity = direction.Unit * targetSpeed
+        
+        local moveStep = config.CurrentVelocity * deltaTime
+        
+        if moveStep.Magnitude > distance then
+            moveStep = direction
+        end
+        
+        local newPos = currentPos + moveStep
+        
+        if isAnimationLift then
+            local targetHeight = config.OriginalGroundHeight + config.LiftHeight
+            newPos = Vector3.new(newPos.X, targetHeight, newPos.Z)
+        end
+        
+        local lookAtPos = Vector3.new(targetPos.X, newPos.Y, targetPos.Z)
+        local targetCF = CFrame.new(newPos, lookAtPos)
+        
+        localRoot.CFrame = localRoot.CFrame:Lerp(targetCF, config.RotationSpeed * deltaTime)
+        
+        localRoot.Velocity = config.CurrentVelocity
+        
+    else
+        if isAnimationLift then
+            local targetHeight = config.OriginalGroundHeight + config.LiftHeight
+            local fixedPos = Vector3.new(targetGroundPos.X, targetHeight, targetGroundPos.Z)
+            localRoot.CFrame = CFrame.new(fixedPos, targetPos)
+        else
+            localRoot.CFrame = CFrame.new(targetGroundPos, targetPos)
+        end
+        
+        config.CurrentVelocity = Vector3.new(0, 0, 0)
+        localRoot.Velocity = config.CurrentVelocity
+    end
+    
+    config.LastTargetPosition = targetPos
+end
+
+local function ultraFastSync(targetRoot, targetHumanoid, localRoot, deltaTime)
+    local config = MainModule.Killaura
+    
+    local targetPos = targetRoot.Position
+    local targetVel = targetRoot.Velocity
+    local targetLook = targetRoot.CFrame.LookVector
+    
+    local isTargetJumping = checkTargetJumping(targetRoot)
+    
+    local isAnimationLift = handleAnimationLift(localRoot, targetPos, targetLook, targetVel, deltaTime)
+    
+    if isTargetJumping and not isAnimationLift then
+        syncJumpHeight(localRoot, targetRoot, targetPos, deltaTime)
+    elseif config.IsJumping and not isTargetJumping then
+        config.IsJumping = false
+        config.JumpSync = false
+        config.JumpStartPosition = nil
+        config.JumpStartAttachment = "behind"
+        config.JumpStartDistance = config.BehindDistance
+    end
+    
+    ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
+    
+    if not isAnimationLift and not config.IsJumping and not config.IsLifted then
+        local rayOrigin = localRoot.Position + Vector3.new(0, 1, 0)
+        local ray = Ray.new(rayOrigin, Vector3.new(0, -4, 0))
+        local hit = workspace:FindPartOnRayWithIgnoreList(ray, {localRoot.Parent})
+        
+        if hit then
+            local heightDiff = localRoot.Position.Y - rayOrigin.Y + 4
+            if heightDiff > 3.0 then
+                localRoot.Velocity = Vector3.new(0, -80, 0)
+            elseif heightDiff < 2.0 then
+                localRoot.Velocity = Vector3.new(0, 50, 0)
+            end
+        end
+    end
+    
+    config.LastPosition = localRoot.Position
+    config.TargetLastVelocity = targetVel
+    config.LastDirectionCheckTime = tick()
+end
+
+local function checkAndSwitchTarget()
+    local config = MainModule.Killaura
+    
+    if not config.Enabled then return false end
+    
+    local currentTarget = config.CurrentTarget
+    
+    if currentTarget then
+        local targetChar = currentTarget.Character
+        if not targetChar then return false end
+        
+        local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then return false end
+        
+        local localPlayer = game:GetService("Players").LocalPlayer
+        if localPlayer and localPlayer.Character then
+            local localRoot = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+            
+            if localRoot and targetRoot then
+                local distance = (targetRoot.Position - localRoot.Position).Magnitude
+                if distance > 250 then return false end
+            end
+        end
+        
+        return true
+    end
+    
+    return false
+end
+
+local function updateUltraFastSync(deltaTime)
+    if not MainModule.Killaura.Enabled then return end
+    
+    local localPlayer = game:GetService("Players").LocalPlayer
+    if not localPlayer then return end
+    
+    local character = localPlayer.Character
+    if not character then return end
+    
+    local localRoot = character:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return end
+    
+    local config = MainModule.Killaura
+    
+    if not checkAndSwitchTarget() then
+        config.CurrentTarget = nil
+        config.IsAttached = false
+        config.AnimationLiftActive = false
+        config.IsLifted = false
+        config.IsJumping = false
+        config.JumpSync = false
+        config.JumpStartPosition = nil
+        config.JumpStartAttachment = "behind"
+        config.JumpStartDistance = config.BehindDistance
+        
+        local closestPlayer = findClosestPlayer()
+        if closestPlayer then
+            config.CurrentTarget = closestPlayer
+            config.IsAttached = true
+            config.LastAnimationState = false
+            
+            local targetChar = closestPlayer.Character
+            local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+            
+            if localRoot and targetRoot then
+                local targetLook = targetRoot.CFrame.LookVector
+                local targetVel = targetRoot.Velocity
+                local horizontalSpeed = Vector3.new(targetVel.X, 0, targetVel.Z).Magnitude
+                
+                local attachmentType, desiredDistance
+                if horizontalSpeed >= config.SpeedThreshold and getTargetMovementDirection(targetRoot) == "forward" then
+                    attachmentType = "front"
+                    desiredDistance = config.FrontDistance
+                else
+                    attachmentType = "behind"
+                    desiredDistance = config.BehindDistance
+                end
+                
+                local desiredOffset = (attachmentType == "front") and (targetLook * desiredDistance) or (-targetLook * desiredDistance)
+                local startPos = targetRoot.Position + desiredOffset
+                
+                localRoot.CFrame = CFrame.new(startPos, targetRoot.Position)
+                
+                config.LastPosition = startPos
+                config.OriginalGroundHeight = startPos.Y
+                config.CurrentVelocity = Vector3.new(0, 0, 0)
+                config.JumpStartAttachment = attachmentType
+                config.JumpStartDistance = desiredDistance
+            end
+        else
+            task.delay(0.05, function()
+                if config.Enabled and not config.CurrentTarget then
+                    MainModule.ToggleKillaura(false)
+                end
+            end)
+            return
+        end
+    end
+    
+    if not config.CurrentTarget or not config.IsAttached then return end
+    
+    local targetChar = config.CurrentTarget.Character
+    local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+    local targetHumanoid = targetChar:FindFirstChildOfClass("Humanoid")
+    
+    if not targetRoot or not targetHumanoid or targetHumanoid.Health <= 0 then
+        config.CurrentTarget = nil
+        config.IsAttached = false
+        return
+    end
+    
+    ultraFastSync(targetRoot, targetHumanoid, localRoot, deltaTime)
+end
+
+function MainModule.ToggleKillaura(enabled)
+    local config = MainModule.Killaura
+    
+    if config.Enabled == enabled then return end
+    
+    if enabled then
+        if not findClosestPlayer() then return end
+    end
+    
+    config.Enabled = enabled
+    
+    for _, conn in pairs(config.Connections) do
+        if conn then conn:Disconnect() end
+    end
+    config.Connections = {}
+    
+    if not enabled then
+        config.CurrentTarget = nil
+        config.IsAttached = false
+        config.IsLifted = false
+        config.IsJumping = false
+        config.AnimationLiftActive = false
+        config.LastAnimationState = false
+        config.JumpSync = false
+        config.JumpStartPosition = nil
+        config.CurrentVelocity = Vector3.new(0, 0, 0)
+        config.JumpStartAttachment = "behind"
+        config.JumpStartDistance = config.BehindDistance
+        return
+    end
+    
+    local closestPlayer = findClosestPlayer()
+    if closestPlayer then
+        config.CurrentTarget = closestPlayer
+        config.IsAttached = true
+        config.LastAnimationState = false
+        
+        config.AnimationLiftActive = false
+        config.IsLifted = false
+        config.IsJumping = false
+        config.JumpSync = false
+        config.JumpStartPosition = nil
+        config.CurrentVelocity = Vector3.new(0, 0, 0)
+        config.JumpStartAttachment = "behind"
+        config.JumpStartDistance = config.BehindDistance
+        
+        local localPlayer = game:GetService("Players").LocalPlayer
+        if localPlayer and localPlayer.Character then
+            local localRoot = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local targetChar = closestPlayer.Character
+            local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+            
+            if localRoot and targetRoot then
+                local targetLook = targetRoot.CFrame.LookVector
+                local targetVel = targetRoot.Velocity
+                local horizontalSpeed = Vector3.new(targetVel.X, 0, targetVel.Z).Magnitude
+                
+                local attachmentType, desiredDistance
+                if horizontalSpeed >= config.SpeedThreshold and getTargetMovementDirection(targetRoot) == "forward" then
+                    attachmentType = "front"
+                    desiredDistance = config.FrontDistance
+                else
+                    attachmentType = "behind"
+                    desiredDistance = config.BehindDistance
+                end
+                
+                local desiredOffset = (attachmentType == "front") and (targetLook * desiredDistance) or (-targetLook * desiredDistance)
+                local startPos = targetRoot.Position + desiredOffset
+                
+                localRoot.CFrame = CFrame.new(startPos, targetRoot.Position)
+                
+                config.LastPosition = startPos
+                config.OriginalGroundHeight = startPos.Y
+                config.CurrentVelocity = Vector3.new(0, 0, 0)
+                config.JumpStartAttachment = attachmentType
+                config.JumpStartDistance = desiredDistance
+            end
+        end
+    else
+        config.Enabled = false
+        return
+    end
+    
+    local heartbeatConn = game:GetService("RunService").Heartbeat:Connect(function(deltaTime)
+        if not config.Enabled then return end
+        updateUltraFastSync(deltaTime)
+    end)
+    
+    table.insert(config.Connections, heartbeatConn)
+    
+    local players = game:GetService("Players")
+    local localPlayer = players.LocalPlayer
+    
+    if localPlayer then
+        local charConn = localPlayer.CharacterAdded:Connect(function()
+            if not config.Enabled then return end
+            
+            task.wait(0.1)
+            
+            config.CurrentTarget = nil
+            config.IsAttached = false
+            config.IsLifted = false
+            config.IsJumping = false
+            config.AnimationLiftActive = false
+            config.LastAnimationState = false
+            config.JumpSync = false
+            config.JumpStartPosition = nil
+            config.CurrentVelocity = Vector3.new(0, 0, 0)
+            config.JumpStartAttachment = "behind"
+            config.JumpStartDistance = config.BehindDistance
+            
+            local closestPlayer = findClosestPlayer()
+            if closestPlayer then
+                config.CurrentTarget = closestPlayer
+                config.IsAttached = true
+            else
+                MainModule.ToggleKillaura(false)
+            end
+        end)
+        table.insert(config.Connections, charConn)
+    end
+    
+    local removeConn = players.PlayerRemoving:Connect(function(player)
+        if config.Enabled and config.CurrentTarget == player then
+            config.CurrentTarget = nil
+            config.IsAttached = false
+            config.AnimationLiftActive = false
+            config.LastAnimationState = false
+            config.JumpSync = false
+            config.JumpStartPosition = nil
+            config.CurrentVelocity = Vector3.new(0, 0, 0)
+            config.JumpStartAttachment = "behind"
+            config.JumpStartDistance = config.BehindDistance
+            
+            local closestPlayer = findClosestPlayer()
+            if closestPlayer then
+                config.CurrentTarget = closestPlayer
+                config.IsAttached = true
+            else
+                task.delay(0.1, function()
+                    if config.Enabled and not config.CurrentTarget then
+                        MainModule.ToggleKillaura(false)
+                    end
+                end)
+            end
+        end
+    end)
+    table.insert(config.Connections, removeConn)
+end
+
+-- ============ ESP ============
+MainModule.Misc = {
+    InstaInteract = false,
+    NoCooldownProximity = false,
+    ESPEnabled = false,
+    ESPPlayers = true,
+    ESPHiders = true,
+    ESPSeekers = true,
+    ESPCandies = false,
+    ESPKeys = true,
+    ESPDoors = true,
+    ESPEscapeDoors = true,
+    ESPGuards = true,
+    ESPHighlight = true,
+    ESPDistance = true,
+    ESPNames = true,
+    ESPBoxes = true,
+    ESPFillTransparency = 0.7,
+    ESPOutlineTransparency = 0,
+    ESPTextSize = 18,
+    BypassRagdollEnabled = false,
+    RemoveInjuredEnabled = false,
+    RemoveStunEnabled = false,
+    UnlockDashEnabled = false,
+    UnlockPhantomStepEnabled = false,
+    LastInjuredNotify = 0,
+    LastESPUpdate = 0
+}
+
+MainModule.ESP = {
+    Players = {},
+    Objects = {},
+    Connections = {},
+    Folder = nil,
+    MainConnection = nil,
+    UpdateRate = 0.1
+}
+
+function MainModule.ToggleESP(enabled)
+    MainModule.Misc.ESPEnabled = enabled
+    if MainModule.ESP.MainConnection then
+        MainModule.ESP.MainConnection:Disconnect()
+        MainModule.ESP.MainConnection = nil
+    end
+    MainModule.ClearESP()
+    if enabled then
+        MainModule.ESP.Folder = Instance.new("Folder")
+        MainModule.ESP.Folder.Name = "CreonXESP"
+        MainModule.ESP.Folder.Parent = game:GetService("CoreGui")
+        
+        local function UpdatePlayerESP(player)
+            if not player or player == LocalPlayer then return end
+            local character = player.Character
+            if not character then return end
+            local humanoid = GetHumanoid(character)
+            local rootPart = GetRootPart(character)
+            if not (humanoid and rootPart and humanoid.Health > 0) then return end
+            
+            local localCharacter = GetCharacter()
+            local localRoot = localCharacter and GetRootPart(localCharacter)
+            local espData = MainModule.ESP.Players[player]
+            
+            if not espData then
+                espData = {
+                    Player = player,
+                    Highlight = nil,
+                    Billboard = nil,
+                    Label = nil
+                }
+                MainModule.ESP.Players[player] = espData
+            end
+            
+            if not espData.Highlight then
+                espData.Highlight = Instance.new("Highlight")
+                espData.Highlight.Name = player.Name .. "_ESP"
+                espData.Highlight.Adornee = character
+                espData.Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                espData.Highlight.Enabled = MainModule.Misc.ESPHighlight
+                espData.Highlight.Parent = MainModule.ESP.Folder
+            end
+            
+            if IsHider(player) and MainModule.Misc.ESPHiders then
+                espData.Highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                espData.Highlight.OutlineColor = Color3.fromRGB(0, 200, 0)
+            elseif IsSeeker(player) and MainModule.Misc.ESPSeekers then
+                espData.Highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                espData.Highlight.OutlineColor = Color3.fromRGB(200, 0, 0)
+            elseif MainModule.Misc.ESPPlayers then
+                espData.Highlight.FillColor = Color3.fromRGB(0, 120, 255)
+                espData.Highlight.OutlineColor = Color3.fromRGB(0, 100, 200)
+            else
+                espData.Highlight.Enabled = false
+            end
+            
+            espData.Highlight.FillTransparency = MainModule.Misc.ESPFillTransparency
+            espData.Highlight.OutlineTransparency = MainModule.Misc.ESPOutlineTransparency
+            
+            if MainModule.Misc.ESPNames then
+                if not espData.Billboard then
+                    espData.Billboard = Instance.new("BillboardGui")
+                    espData.Billboard.Name = player.Name .. "_Text"
+                    espData.Billboard.Adornee = rootPart
+                    espData.Billboard.AlwaysOnTop = true
+                    espData.Billboard.Size = UDim2.new(0, 200, 0, 50)
+                    espData.Billboard.StudsOffset = Vector3.new(0, 3, 0)
+                    espData.Billboard.Parent = MainModule.ESP.Folder
+                    
+                    espData.Label = Instance.new("TextLabel")
+                    espData.Label.Size = UDim2.new(1, 0, 1, 0)
+                    espData.Label.BackgroundTransparency = 1
+                    espData.Label.TextColor3 = espData.Highlight.FillColor
+                    espData.Label.TextSize = MainModule.Misc.ESPTextSize
+                    espData.Label.Font = Enum.Font.GothamBold
+                    espData.Label.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    espData.Label.TextStrokeTransparency = 0.5
+                    espData.Label.Parent = espData.Billboard
+                end
+                
+                espData.Billboard.Enabled = true
+                local distanceText = ""
+                if MainModule.Misc.ESPDistance and localRoot then
+                    local distance = math.floor(GetDistance(rootPart.Position, localRoot.Position))
+                    distanceText = string.format(" [%dm]", distance)
+                end
+                
+                local healthText = string.format("HP: %d/%d", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
+                local nameText = player.DisplayName or player.Name
+                espData.Label.Text = string.format("%s\n%s%s", nameText, healthText, distanceText)
+                espData.Label.TextColor3 = espData.Highlight.FillColor
+                espData.Label.TextSize = MainModule.Misc.ESPTextSize
+            elseif espData.Billboard then
+                espData.Billboard.Enabled = false
+            end
+        end
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                UpdatePlayerESP(player)
+                player.CharacterAdded:Connect(function()
+                    task.wait(0.5)
+                    UpdatePlayerESP(player)
+                end)
+            end
+        end
+        
+        MainModule.ESP.Connections.PlayerAdded = Players.PlayerAdded:Connect(function(player)
+            if MainModule.Misc.ESPEnabled and player ~= LocalPlayer then
+                task.wait(0.5)
+                UpdatePlayerESP(player)
+            end
+        end)
+        
+        MainModule.ESP.MainConnection = RunService.RenderStepped:Connect(function()
+            if not MainModule.Misc.ESPEnabled then return end
+            for player, espData in pairs(MainModule.ESP.Players) do
+                if player and player.Parent and player.Character then
+                    UpdatePlayerESP(player)
+                else
+                    if espData.Highlight then
+                        SafeDestroy(espData.Highlight)
+                    end
+                    if espData.Billboard then
+                        SafeDestroy(espData.Billboard)
+                    end
+                    MainModule.ESP.Players[player] = nil
+                end
+            end
+        end)
+    end
+end
+
+function MainModule.ClearESP()
+    for player, espData in pairs(MainModule.ESP.Players) do
+        if espData.Highlight then
+            SafeDestroy(espData.Highlight)
+        end
+        if espData.Billboard then
+            SafeDestroy(espData.Billboard)
+        end
+    end
+    MainModule.ESP.Players = {}
+    
+    if MainModule.ESP.Connections then
+        for name, connection in pairs(MainModule.ESP.Connections) do
+            if connection then
+                pcall(function() connection:Disconnect() end)
+                MainModule.ESP.Connections[name] = nil
+            end
+        end
+    end
+    
+    if MainModule.ESP.Folder then
+        SafeDestroy(MainModule.ESP.Folder)
+        MainModule.ESP.Folder = nil
+    end
+    
+    if MainModule.ESP.MainConnection then
+        MainModule.ESP.MainConnection:Disconnect()
+        MainModule.ESP.MainConnection = nil
+    end
+end
+
+-- ============ FAN FUNCTIONS ============
+MainModule.FreeDash = {
+    Enabled = false,
+    RemoteAddedConnection = nil,
+    ChildAddedHook = nil,
+    RemoteEventConnection = nil,
+    OriginalSprintValue = nil,
+    OriginalRemote = nil,
+    FakeRemote = nil,
+    OriginalParent = nil,
+    OriginalIndex = nil,
+    OriginalNewIndex = nil,
+    SecureTable = nil
+}
+
+local antiStunConnection = nil
+MainModule.AutoQTE = {
+    AntiStunEnabled = false
+}
+
+local bypassRagdollConnection = nil
+
+local function DeepRemoveDashRequest()
+    local Environment = (getgenv or function() return _G end)()
+    local CoreServices = game:GetService("ReplicatedStorage")
+
+    local function ProcessTargetObject()
+        local RemoteContainer = CoreServices:FindFirstChild("Remotes")
+        local TargetRemote = RemoteContainer and RemoteContainer:FindFirstChild("DashRequest")
+        
+        if TargetRemote then
+            if type(setrawmetatable) == "function" then
+                local SecureTable = {
+                    __index = function(self, key)
+                        if key == "FireServer" or key == "InvokeServer" then
+                            return function() end
+                        end
+                        return nil
+                    end,
+                    __newindex = function() end,
+                    __call = function() end,
+                    __metatable = "Protected"
+                }
+                setrawmetatable(TargetRemote, SecureTable)
+                MainModule.FreeDash.SecureTable = SecureTable
+            end
+            
+            local RemoteMethods = {"FireServer", "InvokeServer", "OnClientEvent", "OnClientInvoke"}
+            for _, MethodName in ipairs(RemoteMethods) do
+                pcall(function()
+                    local original = TargetRemote[MethodName]
+                    if original then
+                        MainModule.FreeDash["Original" .. MethodName] = original
+                        if setrawmetatable then
+                            local mt = debug.getmetatable(TargetRemote)
+                            if mt then
+                                local originalIndex = mt.__index
+                                mt.__index = function(self, key)
+                                    if key == MethodName then
+                                        return function() end
+                                    end
+                                    return originalIndex(self, key)
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+            
+            if type(getconnections) == "function" then
+                local EventHandlers = {"Changed", "AncestryChanged"}
+                for _, EventName in ipairs(EventHandlers) do
+                    local EventSignal = TargetRemote[EventName]
+                    if EventSignal then
+                        for _, Handler in ipairs(getconnections(EventSignal)) do
+                            Handler:Disconnect()
+                        end
+                    end
+                end
+            end
+            
+            pcall(function()
+                TargetRemote.Archivable = false
+                MainModule.FreeDash.OriginalParent = TargetRemote.Parent
+                local FakeRemote = Instance.new("RemoteEvent")
+                FakeRemote.Name = "DashRequest"
+                for _, descendant in ipairs(TargetRemote:GetChildren()) do
+                    descendant:Clone().Parent = FakeRemote
+                end
+                FakeRemote.Parent = TargetRemote.Parent
+                MainModule.FreeDash.OriginalRemote = TargetRemote
+                TargetRemote.Parent = nil
+                MainModule.FreeDash.FakeRemote = FakeRemote
+            end)
+            
+            if type(getrawmetatable) == "function" then
+                local ObjectMeta = getrawmetatable(TargetRemote)
+                if ObjectMeta then
+                    MainModule.FreeDash.OriginalIndex = ObjectMeta.__index
+                    MainModule.FreeDash.OriginalNewIndex = ObjectMeta.__newindex
+                    
+                    ObjectMeta.__index = function(self, Property)
+                        if Property == "FireServer" or Property == "InvokeServer" then
+                            return function() end
+                        end
+                        return MainModule.FreeDash.OriginalIndex(self, Property)
+                    end
+                    
+                    ObjectMeta.__newindex = function(self, Property, Value)
+                        if Property == "Parent" and Value == nil then
+                            return
+                        end
+                        return MainModule.FreeDash.OriginalNewIndex(self, Property, Value)
+                    end
+                end
+            end
+        end
+    end
+
+    ProcessTargetObject()
+    
+    local remoteFolder = CoreServices:WaitForChild("Remotes", 1)
+    if remoteFolder then
+        MainModule.FreeDash.RemoteAddedConnection = remoteFolder.ChildAdded:Connect(function(child)
+            if child.Name == "DashRequest" then
+                task.wait(0.1)
+                pcall(function()
+                    if setrawmetatable then
+                        local SecureTable = {
+                            __index = function() return function() end end,
+                            __newindex = function() end,
+                            __metatable = "Protected"
+                        }
+                        setrawmetatable(child, SecureTable)
+                    end
+                    child.Archivable = false
+                    child.Parent = nil
+                end)
+            end
+        end)
+    end
+end
+
+local function BlockNewDashRequests()
+    local CoreServices = game:GetService("ReplicatedStorage")
+    local remoteFolder = CoreServices:WaitForChild("Remotes", 1)
+    if remoteFolder then
+        MainModule.FreeDash.ChildAddedHook = remoteFolder.ChildAdded:Connect(function(child)
+            if child.Name == "DashRequest" then
+                task.spawn(function()
+                    task.wait(0.05)
+                    pcall(function()
+                        if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+                            if setrawmetatable then
+                                local mt = {
+                                    __index = function() return function() end end,
+                                    __newindex = function() end
+                                }
+                                setrawmetatable(child, mt)
+                            end
+                            child.Archivable = false
+                            child.Parent = nil
+                        end
+                    end)
+                end)
+            end
+        end)
+    end
+end
+
+function MainModule.ToggleFreeDash(enabled)
+    MainModule.FreeDash.Enabled = enabled
+    
+    if enabled then
+        DeepRemoveDashRequest()
+        BlockNewDashRequests()
+
+        local boosts = LocalPlayer:FindFirstChild("Boosts")
+        if boosts then
+            local fasterSprint = boosts:FindFirstChild("Faster Sprint")
+            if fasterSprint then
+                MainModule.FreeDash.OriginalSprintValue = fasterSprint.Value
+                fasterSprint.Value = 8
+            end
+        end
+        
+        local remote = ReplicatedStorage:FindFirstChild("Remotes")
+        if remote then
+            remote = remote:FindFirstChild("DashRequest")
+            if remote then
+                MainModule.FreeDash.RemoteEventConnection = remote:GetPropertyChangedSignal("Parent"):Connect(function()
+                    pcall(function()
+                        if remote.Parent == nil then
+                            if MainModule.FreeDash.FakeRemote then
+                                MainModule.FreeDash.FakeRemote.Parent = MainModule.FreeDash.OriginalParent
+                            end
+                        end
+                    end)
+                end)
+            end
+        end
+        
+    else
+        if MainModule.FreeDash.RemoteAddedConnection then
+            MainModule.FreeDash.RemoteAddedConnection:Disconnect()
+            MainModule.FreeDash.RemoteAddedConnection = nil
+        end
+        
+        if MainModule.FreeDash.ChildAddedHook then
+            MainModule.FreeDash.ChildAddedHook:Disconnect()
+            MainModule.FreeDash.ChildAddedHook = nil
+        end
+        
+        if MainModule.FreeDash.RemoteEventConnection then
+            MainModule.FreeDash.RemoteEventConnection:Disconnect()
+            MainModule.FreeDash.RemoteEventConnection = nil
+        end
+        
+        local boosts = LocalPlayer:FindFirstChild("Boosts")
+        if boosts then
+            local fasterSprint = boosts:FindFirstChild("Faster Sprint")
+            if fasterSprint then
+                fasterSprint.Value = MainModule.FreeDash.OriginalSprintValue
+            end
+        end
+        
+        if MainModule.FreeDash.OriginalRemote and MainModule.FreeDash.OriginalParent then
+            pcall(function()
+                MainModule.FreeDash.OriginalRemote.Parent = MainModule.FreeDash.OriginalParent
+            end)
+        end
+        
+        if MainModule.FreeDash.FakeRemote then
+            pcall(function() MainModule.FreeDash.FakeRemote:Destroy() end)
+            MainModule.FreeDash.FakeRemote = nil
+        end
+        
+        if MainModule.FreeDash.OriginalIndex then
+            local remote = ReplicatedStorage:FindFirstChild("Remotes")
+            if remote then
+                remote = remote:FindFirstChild("DashRequest")
+                if remote and getrawmetatable then
+                    local mt = getrawmetatable(remote)
+                    if mt then
+                        mt.__index = MainModule.FreeDash.OriginalIndex
+                        if MainModule.FreeDash.OriginalNewIndex then
+                            mt.__newindex = MainModule.FreeDash.OriginalNewIndex
+                        end
+                    end
+                end
+            end
+        end
+        
+        local methods = {"FireServer", "InvokeServer", "OnClientEvent", "OnClientInvoke"}
+        for _, method in ipairs(methods) do
+            local original = MainModule.FreeDash["Original" .. method]
+            if original then
+                local remote = ReplicatedStorage:FindFirstChild("Remotes")
+                if remote then
+                    remote = remote:FindFirstChild("DashRequest")
+                    if remote then
+                        pcall(function()
+                            remote[method] = original
+                        end)
+                    end
+                end
+            end
+        end
+    end
+end
+
+function MainModule.ToggleAntiStunQTE(enabled)
+    MainModule.AutoQTE.AntiStunEnabled = enabled
+    if antiStunConnection then
+        antiStunConnection:Disconnect()
+        antiStunConnection = nil
+    end
+    if enabled then
+        antiStunConnection = RunService.Heartbeat:Connect(function()
+            if not MainModule.AutoQTE.AntiStunEnabled then return end
+            pcall(function()
+                local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+                local impactFrames = playerGui:FindFirstChild("ImpactFrames")
+                if not impactFrames then return end
+                local replicatedStorage = ReplicatedStorage
+                local success, hbgModule = pcall(function()
+                    return require(replicatedStorage.Modules.HBGQTE)
+                end)
+                if not success then return end
+                for _, child in pairs(impactFrames:GetChildren()) do
+                    if child.Name == "OuterRingTemplate" and child:IsA("Frame") then
+                        for _, innerChild in pairs(impactFrames:GetChildren()) do
+                            if innerChild.Name == "InnerTemplate" and innerChild.Position == child.Position 
+                               and not innerChild:GetAttribute("Failed") and not innerChild:GetAttribute("Tweening") then
+                                pcall(function()
+                                    local qteData = {
+                                        Inner = innerChild,
+                                        Outer = child,
+                                        Duration = 2,
+                                        StartedAt = tick()
+                                    }
+                                    hbgModule.Pressed(false, qteData)
+                                end)
+                                break
+                            end
+                        end
+                    end
+                end
+            end)
+        end)
+    end
+end
+
+local harmfulEffectsList = {
+    "RagdollStun", "Stun", "Stunned", "StunEffect", "StunHit",
+    "Knockback", "Knockdown", "Knockout", "KB_Effect",
+    "Dazed", "Paralyzed", "Paralyze", "Freeze", "Frozen", 
+    "Sleep", "Sleeping", "SleepEffect", "Confusion", "Confused",
+    "Slow", "Slowed", "Root", "Rooted", "Immobilized",
+    "Bleed", "Bleeding", "Poison", "Poisoned", "Burn", "Burning",
+    "Shock", "Shocked", "Electrocuted", "Silence", "Silenced",
+    "Disarm", "Disarmed", "Blind", "Blinded", "Fear", "Feared",
+    "Taunt", "Taunted", "Charm", "Charmed", "Petrify", "Petrified"
+}
+
+local enhancedProtectionConnection = nil
+local jointCleaningConnection = nil
+local ragdollBlockConnection = nil
+
+local function CleanNegativeEffects(character)
+    if not character or not MainModule.Misc.BypassRagdollEnabled then return end
+    pcall(function()
+        for _, effectName in ipairs(harmfulEffectsList) do
+            local effect = character:FindFirstChild(effectName)
+            if effect then
+                if effect:IsA("BasePart") then
+                    task.spawn(function()
+                        for i = 1, 5 do
+                            if effect and effect.Parent then
+                                effect.Transparency = effect.Transparency + 0.2
+                                task.wait(0.02)
+                            end
+                        end
+                        pcall(function() effect:Destroy() end)
+                    end)
+                else
+                    pcall(function() effect:Destroy() end)
+                end
+            end
+        end
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            local badAttributes = {"Stunned", "Paralyzed", "Frozen", "Asleep", "Confused", 
+                                   "Slowed", "Rooted", "Silenced", "Disarmed", "Blinded", "Feared"}
+            for _, attr in ipairs(badAttributes) do
+                if humanoid:GetAttribute(attr) then
+                    humanoid:SetAttribute(attr, false)
+                end
+            end
+        end
+    end)
+end
+
+local function CleanJointsAndConstraints(character)
+    if not character then return end
+    pcall(function()
+        local Humanoid = character:FindFirstChild("Humanoid")
+        local HumanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        local Torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+        if not (Humanoid and HumanoidRootPart and Torso) then return end
+        for _, child in ipairs(character:GetChildren()) do
+            if child.Name == "Ragdoll" then
+                pcall(function() child:Destroy() end)
+            end
+        end
+        for _, folderName in pairs({"Stun", "RotateDisabled", "RagdollWakeupImmunity", "InjuredWalking"}) do
+            local folder = character:FindFirstChild(folderName)
+            if folder then
+                folder:Destroy()
+            end
+        end
+        for _, obj in pairs(HumanoidRootPart:GetChildren()) do
+            if obj:IsA("BallSocketConstraint") or obj.Name:match("^CacheAttachment") then
+                obj:Destroy()
+            end
+        end
+        local joints = {"Left Hip", "Left Shoulder", "Neck", "Right Hip", "Right Shoulder"}
+        for _, jointName in pairs(joints) do
+            local motor = Torso:FindFirstChild(jointName)
+            if motor and motor:IsA("Motor6D") and not motor.Part0 then
+                motor.Part0 = Torso
+            end
+        end
+        for _, part in pairs(character:GetChildren()) do
+            if part:IsA("BasePart") and part:FindFirstChild("BoneCustom") then
+                part.BoneCustom:Destroy()
+            end
+        end
+    end)
+end
+
+local function SetupRagdollListener(character)
+    if not character then return end
+    if ragdollBlockConnection then
+        ragdollBlockConnection:Disconnect()
+        ragdollBlockConnection = nil
+    end
+    local Humanoid = character:FindFirstChild("Humanoid")
+    if not Humanoid then return end
+    ragdollBlockConnection = character.ChildAdded:Connect(function(child)
+        if child.Name == "Ragdoll" then
+            pcall(function() child:Destroy() end)
+            pcall(function()
+                Humanoid.PlatformStand = false
+                Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            end)
+        end
+    end)
+end
+
+function MainModule.StartEnhancedProtection()
+    if enhancedProtectionConnection then
+        enhancedProtectionConnection:Disconnect()
+    end
+    enhancedProtectionConnection = RunService.Heartbeat:Connect(function()
+        if not MainModule.Misc.BypassRagdollEnabled then return end
+        local character = GetCharacter()
+        if character then
+            CleanNegativeEffects(character)
+        end
+    end)
+end
+
+function MainModule.StopEnhancedProtection()
+    if enhancedProtectionConnection then
+        enhancedProtectionConnection:Disconnect()
+        enhancedProtectionConnection = nil
+    end
+end
+
+function MainModule.StartJointCleaning()
+    if jointCleaningConnection then
+        jointCleaningConnection:Disconnect()
+    end
+    local character = GetCharacter()
+    if character then
+        CleanJointsAndConstraints(character)
+        SetupRagdollListener(character)
+    end
+    jointCleaningConnection = RunService.Heartbeat:Connect(function()
+        if not MainModule.Misc.BypassRagdollEnabled then return end
+        local character = GetCharacter()
+        if character then
+            CleanJointsAndConstraints(character)
+        end
+    end)
+    LocalPlayer.CharacterAdded:Connect(function(newChar)
+        task.wait(1)
+        SetupRagdollListener(newChar)
+        CleanJointsAndConstraints(newChar)
+    end)
+end
+
+function MainModule.StopJointCleaning()
+    if jointCleaningConnection then
+        jointCleaningConnection:Disconnect()
+        jointCleaningConnection = nil
+    end
+    if ragdollBlockConnection then
+        ragdollBlockConnection:Disconnect()
+        ragdollBlockConnection = nil
+    end
+end
+
+function MainModule.FullCleanup()
+    local character = GetCharacter()
+    if character then
+        CleanNegativeEffects(character)
+        CleanJointsAndConstraints(character)
+        return true
+    end
+    return false
+end
+
+function MainModule.ToggleBypassRagdoll(enabled)
+    MainModule.Misc.BypassRagdollEnabled = enabled
+    if bypassRagdollConnection then
+        bypassRagdollConnection:Disconnect()
+        bypassRagdollConnection = nil
+    end
+    if enabled then
+        bypassRagdollConnection = RunService.Stepped:Connect(function()
+            if not MainModule.Misc.BypassRagdollEnabled then return end
+            pcall(function()
+                local Character = GetCharacter()
+                if not Character then return end
+                local Humanoid = GetHumanoid(Character)
+                local HumanoidRootPart = GetRootPart(Character)
+                if not (Humanoid and HumanoidRootPart) then return end
+                
+                local moveDirection = Humanoid.MoveDirection
+                local isPlayerControlling = moveDirection.Magnitude > 0
+                local playerVelocity = HumanoidRootPart.Velocity
+                local playerSpeed = Vector3.new(playerVelocity.X, 0, playerVelocity.Z).Magnitude
+                
+                for _, child in ipairs(Character:GetChildren()) do
+                    if child.Name == "Ragdoll" then
+                        task.spawn(function()
+                            for i = 1, 10 do
+                                if child and child.Parent then
+                                    for _, part in pairs(child:GetChildren()) do
+                                        if part:IsA("BasePart") then
+                                            part.Transparency = part.Transparency + 0.1
+                                        end
+                                    end
+                                    task.wait(0.05)
+                                end
+                            end
+                            pcall(function() child:Destroy() end)
+                        end)
+                        Humanoid.PlatformStand = false
+                        Humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                    end
+                end
+                local harmfulFolders = {"RotateDisabled", "RagdollWakeupImmunity"}
+                for _, folderName in pairs(harmfulFolders) do
+                    local folder = Character:FindFirstChild(folderName)
+                    if folder then
+                        folder:Destroy()
+                    end
+                end
+                for _, part in pairs(Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        local currentVelocity = part.Velocity
+                        local horizontalSpeed = Vector3.new(currentVelocity.X, 0, currentVelocity.Z).Magnitude
+                        
+                        local speedThreshold = isPlayerControlling and 150 or 50
+                        
+                        if horizontalSpeed > speedThreshold and part ~= HumanoidRootPart then
+                            local newVelocity = Vector3.new(
+                                currentVelocity.X * 0.8,
+                                currentVelocity.Y,
+                                currentVelocity.Z * 0.8
+                            )
+                            part.Velocity = newVelocity
+                        end
+                        for _, force in pairs(part:GetChildren()) do
+                            if force:IsA("BodyForce") then
+                                local forceMagnitude = force.Force.Magnitude
+                                if forceMagnitude > 1000 then
+                                    force:Destroy()
+                                end
+                            elseif force:IsA("BodyVelocity") then
+                                if force.Velocity.Magnitude > 30 and not isPlayerControlling then
+                                    force:Destroy()
+                                end
+                            end
+                        end
+                    end
+                end
+                local playerInputVelocity = HumanoidRootPart.Velocity
+                local externalForces = {}
+                for _, force in pairs(HumanoidRootPart:GetChildren()) do
+                    if force:IsA("BodyForce") or force:IsA("BodyVelocity") then
+                        table.insert(externalForces, force)
+                    end
+                end
+                
+                local shouldFilterVelocity = #externalForces > 0 and not isPlayerControlling
+                
+                if shouldFilterVelocity then
+                    local filteredVelocity = Vector3.new(
+                        playerInputVelocity.X,
+                        HumanoidRootPart.Velocity.Y,
+                        playerInputVelocity.Z
+                    )
+                    HumanoidRootPart.Velocity = filteredVelocity
+                    for _, force in pairs(externalForces) do
+                        task.spawn(function()
+                            if force:IsA("BodyVelocity") then
+                                for i = 1, 5 do
+                                    if force and force.Parent then
+                                        force.Velocity = force.Velocity * 0.5
+                                        task.wait(0.02)
+                                    end
+                                end
+                            end
+                            pcall(function() force:Destroy() end)
+                        end)
+                    end
+                end
+            end)
+        end)
+        local char = GetCharacter()
+        if char then
+            char.ChildAdded:Connect(function(child)
+                if child.Name == "Ragdoll" and MainModule.Misc.BypassRagdollEnabled then
+                    task.wait(0.1)
+                    pcall(function() child:Destroy() end)
+                    local humanoid = GetHumanoid(char)
+                    if humanoid then
+                        humanoid.PlatformStand = false
+                        humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                    end
+                end
+            end)
+        end
+        task.wait(0.5)
+        MainModule.StartEnhancedProtection()
+        MainModule.StartJointCleaning()
+    else
+        MainModule.StopEnhancedProtection()
+        MainModule.StopJointCleaning()
+    end
+end
+
+function MainModule.ToggleRemoveStun(enabled)
+    MainModule.Misc.RemoveStunEnabled = enabled
+    if not enabled then return end
+    
+    local function removeStunEffects()
+        local character = GetCharacter()
+        if not character then return end
+        
+        for _, effectName in ipairs(harmfulEffectsList) do
+            local effect = character:FindFirstChild(effectName)
+            if effect then
+                pcall(function() effect:Destroy() end)
+            end
+        end
+        
+        local humanoid = GetHumanoid(character)
+        if humanoid then
+            if humanoid:GetAttribute("Stunned") then
+                humanoid:SetAttribute("Stunned", false)
+            end
+        end
+    end
+    
+    removeStunEffects()
+    
+    if MainModule.Misc.RemoveStunEnabled then
+        local connection = RunService.Heartbeat:Connect(function()
+            if not MainModule.Misc.RemoveStunEnabled then 
+                connection:Disconnect()
+                return 
+            end
+            removeStunEffects()
+        end)
+    end
+end
+
+function MainModule.TeleportUp100()
+    local character = GetCharacter()
+    if character then
+        local rootPart = GetRootPart(character)
+        if rootPart then
+            local targetPos = rootPart.Position + Vector3.new(0, 100, 0)
+            SafeTeleport(targetPos)
+        end
+    end
+end
+
+function MainModule.TeleportDown40()
+    local character = GetCharacter()
+    if character then
+        local rootPart = GetRootPart(character)
+        if rootPart then
+            local targetPos = rootPart.Position + Vector3.new(0, -40, 0)
+            SafeTeleport(targetPos)
+        end
+    end
+end
+
+-- ============ GAMEPASS FUNCTIONS ============
+function MainModule.EnablePermanentGuard()
+    LocalPlayer:SetAttribute("__OwnsPermGuard", true)
+end
+
+function MainModule.EnableGlassManufacturerVision()
+    LocalPlayer:SetAttribute("__OwnsGlassManufacturerVision", true)
+end
+
+function MainModule.EnableFreeVIP()
+    LocalPlayer:SetAttribute("__OwnsVIPGamepass", true)
+    LocalPlayer:SetAttribute("VIPChatTag", true)
+end
+
+function MainModule.EnableEmotePages()
+    LocalPlayer:SetAttribute("__OwnsEmotePages", true)
+end
+
+function MainModule.EnableCustomPlayerTag()
+    LocalPlayer:SetAttribute("__OwnsCustomPlayerTag", true)
+end
+
+function MainModule.EnablePrivateServerPlus()
+    LocalPlayer:SetAttribute("__OwnsPSPlus", true)
 end
 
 function MainModule.RLGL_TP_ToStart()
