@@ -815,6 +815,12 @@ function MainModule.ToggleKillaura(enabled)
     end
     
     config.Enabled = enabled
+
+    if enabled then
+        MainModule.ShowNotification("Killaura", "Killaura Enabled", 3)
+    else
+        MainModule.ShowNotification("Killaura", "Killaura Disabled", 3)
+    end
     
     for _, conn in pairs(config.Connections) do
         if conn then conn:Disconnect() end
@@ -995,6 +1001,13 @@ MainModule.ESP = {
 
 function MainModule.ToggleESP(enabled)
     MainModule.Misc.ESPEnabled = enabled
+
+    if enabled then
+        MainModule.ShowNotification("ESP", "ESP Enabled", 3)
+    else
+        MainModule.ShowNotification("ESP", "ESP Disabled", 3)
+    end
+    
     if MainModule.ESP.MainConnection then
         MainModule.ESP.MainConnection:Disconnect()
         MainModule.ESP.MainConnection = nil
@@ -1329,6 +1342,12 @@ end
 
 function MainModule.ToggleFreeDash(enabled)
     MainModule.FreeDash.Enabled = enabled
+
+    if enabled then
+        MainModule.ShowNotification("Free Dash", "Free Dash Enabled", 3)
+    else
+        MainModule.ShowNotification("Free Dash", "Free Dash Disabled", 3)
+    end
     
     if enabled then
         DeepRemoveDashRequest()
@@ -1430,6 +1449,13 @@ end
 
 function MainModule.ToggleAntiStunQTE(enabled)
     MainModule.AutoQTE.AntiStunEnabled = enabled
+
+    if enabled then
+        MainModule.ShowNotification("Anti-Stun QTE", "Anti-Stun QTE Enabled", 3)
+    else
+        MainModule.ShowNotification("Anti-Stun QTE", "Anti-Stun QTE Disabled", 3)
+    end
+    
     if antiStunConnection then
         antiStunConnection:Disconnect()
         antiStunConnection = nil
@@ -1646,6 +1672,13 @@ end
 
 function MainModule.ToggleBypassRagdoll(enabled)
     MainModule.Misc.BypassRagdollEnabled = enabled
+
+    if enabled then
+        MainModule.ShowNotification("Bypass Ragdoll", "Bypass Ragdoll Enabled", 3)
+    else
+        MainModule.ShowNotification("Bypass Ragdoll", "Bypass Ragdoll Disabled", 3)
+    end
+    
     if bypassRagdollConnection then
         bypassRagdollConnection:Disconnect()
         bypassRagdollConnection = nil
@@ -1778,6 +1811,11 @@ end
 
 function MainModule.ToggleRemoveStun(enabled)
     MainModule.Misc.RemoveStunEnabled = enabled
+
+    if enabled then
+        MainModule.ShowNotification("Remove Stun", "Remove Stun Enabled", 3)
+    end
+    
     if not enabled then return end
     
     local function removeStunEffects()
@@ -1837,27 +1875,33 @@ end
 -- ============ GAMEPASS FUNCTIONS ============
 function MainModule.EnablePermanentGuard()
     LocalPlayer:SetAttribute("__OwnsPermGuard", true)
+    MainModule.ShowNotification("GamePass", "Permanent Guard: Successfully granted", 3)
 end
 
 function MainModule.EnableGlassManufacturerVision()
     LocalPlayer:SetAttribute("__OwnsGlassManufacturerVision", true)
+    MainModule.ShowNotification("GamePass", "Glass Manufacturer Vision: Successfully granted", 3)
 end
 
 function MainModule.EnableFreeVIP()
     LocalPlayer:SetAttribute("__OwnsVIPGamepass", true)
     LocalPlayer:SetAttribute("VIPChatTag", true)
+    MainModule.ShowNotification("GamePass", "Free VIP: Successfully granted", 3)
 end
 
 function MainModule.EnableEmotePages()
     LocalPlayer:SetAttribute("__OwnsEmotePages", true)
+    MainModule.ShowNotification("GamePass", "Emote Pages: Successfully granted", 3)
 end
 
 function MainModule.EnableCustomPlayerTag()
     LocalPlayer:SetAttribute("__OwnsCustomPlayerTag", true)
+    MainModule.ShowNotification("GamePass", "Custom Player Tag: Successfully granted", 3)
 end
 
 function MainModule.EnablePrivateServerPlus()
     LocalPlayer:SetAttribute("__OwnsPSPlus", true)
+    MainModule.ShowNotification("GamePass", "Private Server Plus: Successfully granted", 3)
 end
 
 function MainModule.RLGL_TP_ToStart()
