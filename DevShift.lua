@@ -1024,7 +1024,7 @@ local function createGamesContent()
             }
         },
         {
-            title = "GONGGI",
+            title = "Pentathlon",
             items = {
                 {name = "AUTO GONGGI", func = "ToggleAutoGonggi", type = "toggle", getState = function() return MainModule.AutoGonggi and MainModule.AutoGonggi.Enabled or false end}
             }
