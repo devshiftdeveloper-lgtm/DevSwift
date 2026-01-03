@@ -199,18 +199,22 @@ MainModule.Killaura = {
     IsLifted = false,
     LiftHeight = 10,
     TargetAnimationsSet = {},
+    
     BehindDistance = 2,
     FrontDistance = 19,
     SpeedThreshold = 18,
+    
     MovementSpeed = 120,
     RotationSpeed = 30,
     Smoothness = 0.95,
     JumpSyncSmoothness = 0.98,
+    
     MaxVelocity = 350,
     VelocitySmoothness = 0.98,
     HumanizeFactor = 0.001,
     NaturalNoise = 0.001,
     AntiDetectionMode = true,
+    
     LastPosition = Vector3.new(),
     TargetLastVelocity = Vector3.new(),
     LastHeight = 0,
@@ -218,6 +222,7 @@ MainModule.Killaura = {
     IsJumping = false,
     JumpStartTime = 0,
     TimeOffset = 0,
+    
     JumpData = {
         TargetJumping = false,
         JumpStartY = 0,
@@ -226,19 +231,24 @@ MainModule.Killaura = {
         JumpGravity = 196.2,
         JumpDuration = 0
     },
+    
     AnimationLiftActive = false,
     AnimationStartTime = 0,
     OriginalGroundHeight = 0,
     WasInFrontBeforeLift = false,
     LastAnimationState = false,
+    
     CurrentVelocity = Vector3.new(),
     TargetVelocity = Vector3.new(),
     LastTargetPosition = Vector3.new(),
     LastTargetVelocity = Vector3.new(),
     LastDirectionCheckTime = 0,
+    
     JumpStartAttachment = "behind",
     JumpStartDistance = 2,
-    LastTargetHealth = 0
+    
+    InitialTargetSet = false,
+    InitialTargetPlayer = nil
 }
 
 for _, animId in pairs(MainModule.Killaura.TeleportAnimations) do
@@ -263,7 +273,7 @@ local function GetHider()
     return nil
 end
 
-local function findClosestPlayer(showNotification)
+local function findClosestPlayer(ignoreCurrentTarget)
     local players = game:GetService("Players")
     local localPlayer = players.LocalPlayer
     if not localPlayer then return nil end
@@ -276,6 +286,24 @@ local function findClosestPlayer(showNotification)
     
     local myPos = rootPart.Position
     
+    local config = MainModule.Killaura
+    
+    if not ignoreCurrentTarget and config.Enabled and config.CurrentTarget and config.IsAttached then
+        local targetPlayer = config.CurrentTarget
+        if targetPlayer and targetPlayer.Character then
+            local targetChar = targetPlayer.Character
+            local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+            local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
+            
+            if targetRoot and humanoid and humanoid.Health > 0 then
+                local distance = (targetRoot.Position - myPos).Magnitude
+                if distance < 250 then
+                    return targetPlayer
+                end
+            end
+        end
+    end
+    
     local hiderCharacter = GetHider()
     if hiderCharacter then
         local targetRoot = hiderCharacter:FindFirstChild("HumanoidRootPart")
@@ -284,9 +312,6 @@ local function findClosestPlayer(showNotification)
         if targetRoot and humanoid and humanoid.Health > 0 then
             for _, player in pairs(players:GetPlayers()) do
                 if player.Character == hiderCharacter then
-                    if showNotification and MainModule.ShowNotification then
-                        MainModule.ShowNotification("Killaura", "Targeting Hider: " .. player.Name, 2)
-                    end
                     return player
                 end
             end
@@ -312,42 +337,7 @@ local function findClosestPlayer(showNotification)
         end
     end
     
-    if closestPlayer and showNotification and MainModule.ShowNotification then
-        MainModule.ShowNotification("Killaura", "Targeting: " .. closestPlayer.Name, 2)
-    end
-    
     return closestPlayer
-end
-
-local function makeCharacterTransparent(character)
-    if not character then return end
-    
-    local function setTransparency(part)
-        if part:IsA("BasePart") then
-            part.Transparency = 1
-            part.CanCollide = false
-        end
-    end
-    
-    for _, part in pairs(character:GetDescendants()) do
-        setTransparency(part)
-    end
-    
-    character.DescendantAdded:Connect(function(part)
-        task.wait()
-        setTransparency(part)
-    end)
-end
-
-local function restoreCharacterCollision(character)
-    if not character then return end
-    
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Transparency = 0
-            part.CanCollide = true
-        end
-    end
 end
 
 local animationCache = {}
@@ -681,27 +671,6 @@ local function ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, is
     config.LastTargetPosition = targetPos
 end
 
-local function checkTargetHealth()
-    local config = MainModule.Killaura
-    
-    if not config.CurrentTarget then return false end
-    
-    local character = config.CurrentTarget.Character
-    if not character then return false end
-    
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return false end
-    
-    local currentHealth = humanoid.Health
-    
-    if currentHealth <= 0 then
-        return true
-    end
-    
-    config.LastTargetHealth = currentHealth
-    return false
-end
-
 local function ultraFastSync(targetRoot, targetHumanoid, localRoot, deltaTime)
     local config = MainModule.Killaura
     
@@ -745,6 +714,35 @@ local function ultraFastSync(targetRoot, targetHumanoid, localRoot, deltaTime)
     config.LastDirectionCheckTime = tick()
 end
 
+local function checkAndSwitchTarget()
+    local config = MainModule.Killaura
+    
+    if not config.Enabled then return false end
+    
+    if config.CurrentTarget then
+        local targetChar = config.CurrentTarget.Character
+        if not targetChar then return false end
+        
+        local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then return false end
+        
+        local localPlayer = game:GetService("Players").LocalPlayer
+        if localPlayer and localPlayer.Character then
+            local localRoot = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+            
+            if localRoot and targetRoot then
+                local distance = (targetRoot.Position - localRoot.Position).Magnitude
+                if distance > 250 then return false end
+            end
+        end
+        
+        return true
+    end
+    
+    return false
+end
+
 local function updateUltraFastSync(deltaTime)
     if not MainModule.Killaura.Enabled then return end
     
@@ -759,52 +757,7 @@ local function updateUltraFastSync(deltaTime)
     
     local config = MainModule.Killaura
     
-    if config.CurrentTarget then
-        local targetChar = config.CurrentTarget.Character
-        if not targetChar then
-            config.CurrentTarget = nil
-            config.IsAttached = false
-            return
-        end
-        
-        local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
-        if not humanoid or humanoid.Health <= 0 then
-            config.CurrentTarget = nil
-            config.IsAttached = false
-            config.AnimationLiftActive = false
-            config.IsLifted = false
-            config.IsJumping = false
-            config.JumpSync = false
-            config.JumpStartPosition = nil
-            config.JumpStartAttachment = "behind"
-            config.JumpStartDistance = config.BehindDistance
-            
-            if MainModule.ShowNotification then
-                MainModule.ShowNotification("Killaura", "Target died, searching new target...", 2)
-            end
-            
-            local closestPlayer = findClosestPlayer(false)
-            if closestPlayer then
-                config.CurrentTarget = closestPlayer
-                config.IsAttached = true
-            else
-                MainModule.ToggleKillaura(false)
-                return
-            end
-        end
-        
-        local localRoot = localPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-        
-        if localRoot and targetRoot then
-            local distance = (targetRoot.Position - localRoot.Position).Magnitude
-            if distance > 250 then
-                return
-            end
-        end
-    end
-    
-    if not config.CurrentTarget or not config.IsAttached then
+    if not checkAndSwitchTarget() then
         config.CurrentTarget = nil
         config.IsAttached = false
         config.AnimationLiftActive = false
@@ -814,12 +767,15 @@ local function updateUltraFastSync(deltaTime)
         config.JumpStartPosition = nil
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
+        config.InitialTargetSet = false
         
-        local closestPlayer = findClosestPlayer(false)
+        local closestPlayer = findClosestPlayer(true)
         if closestPlayer then
             config.CurrentTarget = closestPlayer
             config.IsAttached = true
             config.LastAnimationState = false
+            config.InitialTargetSet = true
+            config.InitialTargetPlayer = closestPlayer
             
             local targetChar = closestPlayer.Character
             local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
@@ -848,13 +804,13 @@ local function updateUltraFastSync(deltaTime)
                 config.CurrentVelocity = Vector3.new(0, 0, 0)
                 config.JumpStartAttachment = attachmentType
                 config.JumpStartDistance = desiredDistance
-                
-                if MainModule.ShowNotification then
-                    MainModule.ShowNotification("Killaura", "Attached to: " .. closestPlayer.Name, 2)
-                end
             end
         else
-            MainModule.ToggleKillaura(false)
+            task.delay(0.05, function()
+                if config.Enabled and not config.CurrentTarget then
+                    MainModule.ToggleKillaura(false)
+                end
+            end)
             return
         end
     end
@@ -868,6 +824,7 @@ local function updateUltraFastSync(deltaTime)
     if not targetRoot or not targetHumanoid or targetHumanoid.Health <= 0 then
         config.CurrentTarget = nil
         config.IsAttached = false
+        config.InitialTargetSet = false
         return
     end
     
@@ -881,18 +838,12 @@ function MainModule.ToggleKillaura(enabled)
     
     if enabled then
         if not findClosestPlayer(true) then 
-            if MainModule.ShowNotification then
-                MainModule.ShowNotification("Killaura", "No target found", 2)
-            end
+            MainModule.ShowNotification("Killaura", "No target found", 2)
             return 
         end
-        if MainModule.ShowNotification then
-            MainModule.ShowNotification("Killaura", "Killaura Enabled", 3)
-        end
+        MainModule.ShowNotification("Killaura", "Killaura Enabled", 3)
     else
-        if MainModule.ShowNotification then
-            MainModule.ShowNotification("Killaura", "Killaura Disabled", 3)
-        end
+        MainModule.ShowNotification("Killaura", "Killaura Disabled", 3)
     end
     
     config.Enabled = enabled
@@ -914,19 +865,18 @@ function MainModule.ToggleKillaura(enabled)
         config.CurrentVelocity = Vector3.new(0, 0, 0)
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
-        
-        local localPlayer = game:GetService("Players").LocalPlayer
-        if localPlayer and localPlayer.Character then
-            restoreCharacterCollision(localPlayer.Character)
-        end
+        config.InitialTargetSet = false
+        config.InitialTargetPlayer = nil
         return
     end
     
-    local closestPlayer = findClosestPlayer(false)
+    local closestPlayer = findClosestPlayer(true)
     if closestPlayer then
         config.CurrentTarget = closestPlayer
         config.IsAttached = true
         config.LastAnimationState = false
+        config.InitialTargetSet = true
+        config.InitialTargetPlayer = closestPlayer
         
         config.AnimationLiftActive = false
         config.IsLifted = false
@@ -939,8 +889,6 @@ function MainModule.ToggleKillaura(enabled)
         
         local localPlayer = game:GetService("Players").LocalPlayer
         if localPlayer and localPlayer.Character then
-            makeCharacterTransparent(localPlayer.Character)
-            
             local localRoot = localPlayer.Character:FindFirstChild("HumanoidRootPart")
             local targetChar = closestPlayer.Character
             local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
@@ -987,12 +935,10 @@ function MainModule.ToggleKillaura(enabled)
     local localPlayer = players.LocalPlayer
     
     if localPlayer then
-        local charConn = localPlayer.CharacterAdded:Connect(function(character)
+        local charConn = localPlayer.CharacterAdded:Connect(function()
             if not config.Enabled then return end
             
-            task.wait(0.5)
-            
-            makeCharacterTransparent(character)
+            task.wait(0.1)
             
             config.CurrentTarget = nil
             config.IsAttached = false
@@ -1005,11 +951,14 @@ function MainModule.ToggleKillaura(enabled)
             config.CurrentVelocity = Vector3.new(0, 0, 0)
             config.JumpStartAttachment = "behind"
             config.JumpStartDistance = config.BehindDistance
+            config.InitialTargetSet = false
             
-            local closestPlayer = findClosestPlayer(false)
+            local closestPlayer = findClosestPlayer(true)
             if closestPlayer then
                 config.CurrentTarget = closestPlayer
                 config.IsAttached = true
+                config.InitialTargetSet = true
+                config.InitialTargetPlayer = closestPlayer
             else
                 MainModule.ToggleKillaura(false)
             end
@@ -1019,30 +968,55 @@ function MainModule.ToggleKillaura(enabled)
     
     local removeConn = players.PlayerRemoving:Connect(function(player)
         if config.Enabled and config.CurrentTarget == player then
-            config.CurrentTarget = nil
-            config.IsAttached = false
-            config.AnimationLiftActive = false
-            config.LastAnimationState = false
-            config.JumpSync = false
-            config.JumpStartPosition = nil
-            config.CurrentVelocity = Vector3.new(0, 0, 0)
-            config.JumpStartAttachment = "behind"
-            config.JumpStartDistance = config.BehindDistance
-            
-            local closestPlayer = findClosestPlayer(false)
-            if closestPlayer then
-                config.CurrentTarget = closestPlayer
-                config.IsAttached = true
-            else
-                task.delay(0.1, function()
-                    if config.Enabled and not config.CurrentTarget then
-                        MainModule.ToggleKillaura(false)
-                    end
-                end)
+            if config.InitialTargetSet and config.InitialTargetPlayer == player then
+                config.CurrentTarget = nil
+                config.IsAttached = false
+                config.AnimationLiftActive = false
+                config.LastAnimationState = false
+                config.JumpSync = false
+                config.JumpStartPosition = nil
+                config.CurrentVelocity = Vector3.new(0, 0, 0)
+                config.JumpStartAttachment = "behind"
+                config.JumpStartDistance = config.BehindDistance
+                config.InitialTargetSet = false
+                
+                local closestPlayer = findClosestPlayer(true)
+                if closestPlayer then
+                    config.CurrentTarget = closestPlayer
+                    config.IsAttached = true
+                    config.InitialTargetSet = true
+                    config.InitialTargetPlayer = closestPlayer
+                else
+                    task.delay(0.1, function()
+                        if config.Enabled and not config.CurrentTarget then
+                            MainModule.ToggleKillaura(false)
+                        end
+                    end)
+                end
             end
         end
     end)
     table.insert(config.Connections, removeConn)
+    
+    local diedConn
+    if config.CurrentTarget then
+        local targetChar = config.CurrentTarget.Character
+        if targetChar then
+            local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                diedConn = humanoid.Died:Connect(function()
+                    if config.Enabled and config.CurrentTarget and config.InitialTargetSet then
+                        task.delay(0.1, function()
+                            if config.Enabled then
+                                MainModule.ToggleKillaura(false)
+                            end
+                        end)
+                    end
+                end)
+                table.insert(config.Connections, diedConn)
+            end
+        end
+    end
 end
 
 -- ============ ESP ============
