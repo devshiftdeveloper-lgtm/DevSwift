@@ -204,15 +204,16 @@ MainModule.Killaura = {
     FrontDistance = 16,
     SpeedThreshold = 18,
     
-    MovementSpeed = 180,
-    RotationSpeed = 120,
-    Smoothness = 0.08,
-    PositionSmoothness = 0.25,
-    VelocitySmoothness = 0.97,
+    -- Улучшенные параметры плавности
+    MovementSpeed = 140, -- Увеличена скорость
+    RotationSpeed = 75, -- Увеличена скорость вращения
+    Smoothness = 0.50, -- Улучшена плавность
+    PositionSmoothness = 0.4, -- Улучшена плавность позиции
+    VelocitySmoothness = 0.97, -- Улучшена плавность скорости
     
-    MaxVelocity = 300,
-    Acceleration = 350,
-    Deceleration = 600,
+    MaxVelocity = 300, -- Увеличен максимум скорости
+    Acceleration = 400, -- Увеличено ускорение
+    Deceleration = 600, -- Увеличено замедление
     
     LastPosition = Vector3.new(),
     TargetLastVelocity = Vector3.new(),
@@ -250,14 +251,18 @@ MainModule.Killaura = {
     OriginalCollisionGroups = {},
     TransparencyData = {
         OriginalTransparency = {},
-        OriginalLocalTransparency = 0
+        OriginalLocalTransparency = 0,
+        MaxTransparency = 0.5 -- Максимальная прозрачность (полупрозрачность вместо полной невидимости)
     },
     
-    NoClipEnabled = false,
-    BodyVelocityCorrector = nil,
-    AntiLoseTargetDistance = 500,
-    TeleportIfFar = true,
-    TeleportThreshold = 100
+    -- Новые параметры для улучшения отслеживания
+    TargetLostTime = 0,
+    MaxTargetLostTime = 0.5, -- Максимальное время потери цели перед сменой
+    TargetPrediction = true, -- Предсказание движения цели
+    PredictionMultiplier = 1.2, -- Множитель предсказания
+    TeleportDetectionDistance = 50, -- Дистанция для обнаружения телепортации
+    MinStickDistance = 30, -- Минимальная дистанция для удержания цели
+    Stickiness = 0.95 -- Сила прилипания к цели (0-1)
 }
 
 for _, animId in pairs(MainModule.Killaura.TeleportAnimations) do
@@ -282,7 +287,8 @@ local function GetHider()
     return nil
 end
 
-local function findClosestPlayer()
+local function findClosestPlayer(forceNewTarget)
+    local config = MainModule.Killaura
     local players = game:GetService("Players")
     local localPlayer = players.LocalPlayer
     if not localPlayer then return nil end
@@ -294,6 +300,23 @@ local function findClosestPlayer()
     if not rootPart then return nil end
     
     local myPos = rootPart.Position
+    
+    -- Если уже есть цель и не принудительно ищем новую
+    if config.CurrentTarget and not forceNewTarget then
+        local targetChar = config.CurrentTarget.Character
+        if targetChar then
+            local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+            local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
+            
+            if targetRoot and humanoid and humanoid.Health > 0 then
+                local distance = (targetRoot.Position - myPos).Magnitude
+                -- Если цель в пределах допустимой дистанции, возвращаем её
+                if distance < config.MinStickDistance * 3 then
+                    return config.CurrentTarget
+                end
+            end
+        end
+    end
     
     local hiderCharacter = GetHider()
     if hiderCharacter then
@@ -320,7 +343,7 @@ local function findClosestPlayer()
             
             if targetRoot and humanoid and humanoid.Health > 0 then
                 local distance = (targetRoot.Position - myPos).Magnitude
-                if distance < closestDistance then
+                if distance < closestDistance and distance < config.MinStickDistance * 2 then
                     closestDistance = distance
                     closestPlayer = player
                 end
@@ -331,58 +354,74 @@ local function findClosestPlayer()
     return closestPlayer
 end
 
-local function setupNoClipAndTransparency(character)
+-- ФИКС: Исправленная функция для прозрачности (не полностью прозрачная)
+local function setupCollisionAndTransparency(character)
     local config = MainModule.Killaura
-    if not character or config.NoClipEnabled then return end
+    if not character or config.CollisionDisabled then return end
     
-    config.NoClipEnabled = true
+    config.CollisionDisabled = true
+    config.OriginalCollisionGroups = {}
+    config.TransparencyData.OriginalTransparency = {}
     
+    local physicsService = game:GetService("PhysicsService")
+    
+    -- Сохраняем и изменяем коллизии
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") then
-            part.CanCollide = false
-            part.Massless = true
+            config.OriginalCollisionGroups[part] = part.CollisionGroupId
+            physicsService:SetPartCollisionGroup(part, "Ignore")
             
+            -- ФИКС: Устанавливаем полупрозрачность вместо полной невидимости
+            config.TransparencyData.OriginalTransparency[part] = part.Transparency
             if part:IsA("MeshPart") or part:IsA("Part") then
-                part.Transparency = 0
+                part.Transparency = config.TransparencyData.MaxTransparency
             end
         end
     end
     
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.AutoRotate = false
+    -- ФИКС: Не трогаем HealthDisplayDistance
+    local localPlayer = game:GetService("Players").LocalPlayer
+    if localPlayer.Character == character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            config.TransparencyData.OriginalLocalTransparency = humanoid.HealthDisplayDistance
+            -- Не изменяем HealthDisplayDistance
+        end
     end
-    
-    config.BodyVelocityCorrector = Instance.new("BodyVelocity")
-    config.BodyVelocityCorrector.Name = "VelocityCorrector"
-    config.BodyVelocityCorrector.MaxForce = Vector3.new(4000, 4000, 4000)
-    config.BodyVelocityCorrector.P = 1000
-    config.BodyVelocityCorrector.Velocity = Vector3.new()
-    config.BodyVelocityCorrector.Parent = character:FindFirstChild("HumanoidRootPart")
 end
 
-local function restoreNoClipAndTransparency(character)
+local function restoreCollisionAndTransparency(character)
     local config = MainModule.Killaura
-    if not character or not config.NoClipEnabled then return end
+    if not character or not config.CollisionDisabled then return end
     
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = true
-            part.Massless = false
+    local physicsService = game:GetService("PhysicsService")
+    
+    -- Восстанавливаем коллизии
+    for part, groupId in pairs(config.OriginalCollisionGroups) do
+        if part and part.Parent then
+            physicsService:SetPartCollisionGroup(part, physicsService:GetCollisionGroupName(groupId))
         end
     end
     
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.AutoRotate = true
+    -- ФИКС: Восстанавливаем оригинальную прозрачность
+    for part, transparency in pairs(config.TransparencyData.OriginalTransparency) do
+        if part and part.Parent then
+            part.Transparency = transparency
+        end
     end
     
-    if config.BodyVelocityCorrector and config.BodyVelocityCorrector.Parent then
-        config.BodyVelocityCorrector:Destroy()
+    -- ФИКС: Восстанавливаем HealthDisplayDistance
+    local localPlayer = game:GetService("Players").LocalPlayer
+    if localPlayer.Character == character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.HealthDisplayDistance = config.TransparencyData.OriginalLocalTransparency
+        end
     end
-    config.BodyVelocityCorrector = nil
     
-    config.NoClipEnabled = false
+    config.CollisionDisabled = false
+    config.OriginalCollisionGroups = {}
+    config.TransparencyData.OriginalTransparency = {}
 end
 
 local animationCache = {}
@@ -427,7 +466,7 @@ local function checkTargetJumping(targetRoot)
         config.JumpData.JumpVelocity = targetRoot.Velocity.Y
         config.JumpData.JumpStartTime = currentTime
         config.JumpSync = true
-        config.IsJumping = false
+        config.IsJumping = true
         
         local targetVel = targetRoot.Velocity
         local targetLook = targetRoot.CFrame.LookVector
@@ -458,9 +497,11 @@ local function checkTargetJumping(targetRoot)
             config.JumpData.JumpPeakReached = true
         end
         
-        if math.abs(targetRoot.Position.Y - config.JumpData.JumpStartY) < 1 and targetRoot.Velocity.Y < 2 then
+        if targetRoot.Velocity.Y > -2 and targetRoot.Velocity.Y < 2 and 
+           math.abs(targetRoot.Position.Y - config.JumpData.JumpStartY) < 1 then
             config.JumpData.TargetJumping = false
             config.JumpSync = false
+            config.IsJumping = false
             config.JumpStartAttachment = "behind"
             config.JumpStartDistance = config.BehindDistance
         end
@@ -542,7 +583,7 @@ local function handleAnimationLift(localRoot, targetPos, targetLook, targetVel, 
         local targetGroundHeight = config.OriginalGroundHeight
         
         if currentHeight > targetGroundHeight + 0.1 then
-            local descentSpeed = 80
+            local descentSpeed = 100
             local newHeight = currentHeight - descentSpeed * deltaTime
             
             if newHeight < targetGroundHeight then
@@ -566,7 +607,7 @@ local function handleAnimationLift(localRoot, targetPos, targetLook, targetVel, 
         local currentHeight = localRoot.Position.Y
         
         if math.abs(currentHeight - targetHeight) > 0.1 then
-            local correctionSpeed = 150
+            local correctionSpeed = 200
             local heightDiff = targetHeight - currentHeight
             local newHeight = currentHeight + heightDiff * correctionSpeed * deltaTime
             
@@ -580,10 +621,10 @@ local function handleAnimationLift(localRoot, targetPos, targetLook, targetVel, 
     return config.AnimationLiftActive
 end
 
-local function syncHeightWithoutJump(localRoot, targetRoot, targetPos, deltaTime)
+local function syncJumpHeight(localRoot, targetRoot, targetPos, deltaTime)
     local config = MainModule.Killaura
     
-    if not config.JumpSync then
+    if not config.JumpSync or not config.IsJumping then
         return false
     end
     
@@ -591,30 +632,23 @@ local function syncHeightWithoutJump(localRoot, targetRoot, targetPos, deltaTime
     local myHeight = localRoot.Position.Y
     local heightDiff = targetHeight - myHeight
     
-    if math.abs(heightDiff) > 0.1 then
-        local verticalSpeed = heightDiff * 5
+    if not config.JumpStartPosition then
+        config.JumpStartPosition = localRoot.Position
+    end
+    
+    if math.abs(heightDiff) > 0.05 then
+        local jumpForce = heightDiff * deltaTime * 200
         
-        local currentPos = localRoot.Position
-        local newHeight = currentPos.Y + verticalSpeed * deltaTime
+        local newHeight = myHeight + jumpForce
         
-        local newPos = Vector3.new(
-            currentPos.X,
+        local horizontalPos = Vector3.new(
+            localRoot.Position.X,
             newHeight,
-            currentPos.Z
+            localRoot.Position.Z
         )
         
-        local lookAtPos = Vector3.new(targetPos.X, newPos.Y, targetPos.Z)
-        localRoot.CFrame = CFrame.new(newPos, lookAtPos)
-        
-        if config.BodyVelocityCorrector then
-            config.BodyVelocityCorrector.Velocity = Vector3.new(0, verticalSpeed, 0)
-        end
-        
+        localRoot.CFrame = CFrame.new(horizontalPos, Vector3.new(targetPos.X, newHeight, targetPos.Z))
         return true
-    else
-        if config.BodyVelocityCorrector then
-            config.BodyVelocityCorrector.Velocity = Vector3.new()
-        end
     end
     
     return false
@@ -633,7 +667,7 @@ local function getSmartPositioning(targetRoot)
     local horizontalVel = Vector3.new(targetVel.X, 0, targetVel.Z)
     local horizontalSpeed = horizontalVel.Magnitude
     
-    if config.JumpSync then
+    if config.IsJumping then
         return config.JumpStartAttachment, config.JumpStartDistance
     end
     
@@ -650,7 +684,8 @@ local function getSmartPositioning(targetRoot)
     end
 end
 
-local function ultraSmoothMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
+-- ФИКС: Улучшенная функция плавного движения
+local function smoothMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
     local config = MainModule.Killaura
     
     local targetRoot = nil
@@ -666,7 +701,16 @@ local function ultraSmoothMovement(localRoot, targetPos, targetLook, deltaTime, 
     end
     
     local desiredOffset = (attachmentType == "front") and (targetLook * desiredDistance) or (-targetLook * desiredDistance)
-    local targetGroundPos = targetPos + desiredOffset
+    
+    -- Предсказание движения цели
+    local predictedPos = targetPos
+    if config.TargetPrediction and targetRoot then
+        local targetVel = targetRoot.Velocity
+        local predictedOffset = targetVel * deltaTime * config.PredictionMultiplier
+        predictedPos = targetPos + predictedOffset
+    end
+    
+    local targetGroundPos = predictedPos + desiredOffset
     
     if isAnimationLift then
         targetGroundPos = Vector3.new(
@@ -680,31 +724,33 @@ local function ultraSmoothMovement(localRoot, targetPos, targetLook, deltaTime, 
     local direction = targetGroundPos - currentPos
     local distance = direction.Magnitude
     
-    if config.TeleportIfFar and distance > config.TeleportThreshold then
-        localRoot.CFrame = CFrame.new(targetGroundPos, targetPos)
-        config.CurrentVelocity = Vector3.new()
-        config.LastTargetPosition = targetPos
-        return
-    end
-    
+    -- ФИКС: Улучшенная плавность с использованием двойного сглаживания
     if distance > 0.01 then
-        local targetSpeed = math.min(config.MovementSpeed, config.Acceleration * deltaTime + distance * 8)
+        local targetSpeed = math.min(config.MovementSpeed, config.Acceleration * deltaTime * 2 + distance * 5)
+        
+        -- Двойное сглаживание для лучшей плавности
+        local smoothFactor1 = config.Smoothness * 0.8
+        local smoothFactor2 = config.Smoothness * 1.2
         
         local directionUnit = direction.Unit
+        
+        -- Первый этап сглаживания
         local velocityChange = directionUnit * targetSpeed
+        local intermediateVelocity = config.CurrentVelocity:Lerp(velocityChange, smoothFactor1)
         
-        config.CurrentVelocity = config.CurrentVelocity:Lerp(velocityChange, config.Smoothness)
+        -- Второй этап сглаживания для устранения "колбашения"
+        local stickinessFactor = math.min(config.Stickiness + distance * 0.01, 0.99)
+        config.CurrentVelocity = intermediateVelocity:Lerp(velocityChange, stickinessFactor)
         
-        local velocityMagnitude = config.CurrentVelocity.Magnitude
-        if velocityMagnitude > config.MaxVelocity then
+        if config.CurrentVelocity.Magnitude > config.MaxVelocity then
             config.CurrentVelocity = config.CurrentVelocity.Unit * config.MaxVelocity
         end
         
         local moveStep = config.CurrentVelocity * deltaTime
         
         if moveStep.Magnitude > distance then
-            moveStep = direction
-            config.CurrentVelocity = direction.Unit * math.min(distance / deltaTime, config.MaxVelocity)
+            moveStep = direction * 0.95 -- Немного не доходим до цели для плавности
+            config.CurrentVelocity = direction.Unit * math.min(distance / deltaTime * 0.8, config.MaxVelocity)
         end
         
         local newPos = currentPos + moveStep
@@ -714,74 +760,41 @@ local function ultraSmoothMovement(localRoot, targetPos, targetLook, deltaTime, 
             newPos = Vector3.new(newPos.X, targetHeight, newPos.Z)
         end
         
-        local lookAtPos = Vector3.new(targetPos.X, newPos.Y, targetPos.Z)
+        local lookAtPos = Vector3.new(predictedPos.X, newPos.Y, predictedPos.Z)
         local targetCF = CFrame.new(newPos, lookAtPos)
         
+        -- Плавное вращение с инерцией
+        local smoothRotation = config.RotationSpeed * deltaTime * 0.5
         local currentCF = localRoot.CFrame
-        local smoothedCF = currentCF:Lerp(targetCF, config.RotationSpeed * deltaTime * 2)
-        localRoot.CFrame = smoothedCF
+        local newCF = currentCF:Lerp(targetCF, smoothRotation)
         
-        if config.BodyVelocityCorrector then
-            config.BodyVelocityCorrector.Velocity = config.CurrentVelocity
-        else
-            localRoot.Velocity = config.CurrentVelocity
-        end
+        -- Дополнительное сглаживание вращения
+        local finalCF = currentCF:Lerp(newCF, 0.7)
+        localRoot.CFrame = finalCF
+        
+        -- Плавное применение скорости
+        localRoot.Velocity = config.CurrentVelocity:Lerp(Vector3.zero, 0.3)
         
     else
+        -- Плавное завершение движения
         if isAnimationLift then
             local targetHeight = config.OriginalGroundHeight + config.LiftHeight
             local fixedPos = Vector3.new(targetGroundPos.X, targetHeight, targetGroundPos.Z)
-            localRoot.CFrame = CFrame.new(fixedPos, targetPos)
+            localRoot.CFrame = CFrame.new(fixedPos, predictedPos)
         else
-            localRoot.CFrame = CFrame.new(targetGroundPos, targetPos)
+            localRoot.CFrame = CFrame.new(targetGroundPos, predictedPos)
         end
         
-        config.CurrentVelocity = Vector3.new()
-        if config.BodyVelocityCorrector then
-            config.BodyVelocityCorrector.Velocity = Vector3.new()
-        else
-            localRoot.Velocity = Vector3.new()
-        end
+        -- Плавный останов вместо резкого
+        config.CurrentVelocity = config.CurrentVelocity:Lerp(Vector3.new(0, 0, 0), 0.5)
+        localRoot.Velocity = config.CurrentVelocity
     end
     
-    config.LastTargetPosition = targetPos
-end
-
-local function maintainTargetConnection(localRoot, targetRoot, targetHumanoid)
-    local config = MainModule.Killaura
-    
-    if not config.CurrentTarget or not targetRoot or not targetHumanoid then
-        return false
-    end
-    
-    if targetHumanoid.Health <= 0 then
-        return false
-    end
-    
-    local distance = (targetRoot.Position - localRoot.Position).Magnitude
-    if distance > config.AntiLoseTargetDistance then
-        if config.TeleportIfFar then
-            local targetLook = targetRoot.CFrame.LookVector
-            local desiredOffset = -targetLook * config.BehindDistance
-            local targetPos = targetRoot.Position + desiredOffset
-            localRoot.CFrame = CFrame.new(targetPos, targetRoot.Position)
-            config.CurrentVelocity = Vector3.new()
-        else
-            return false
-        end
-    end
-    
-    return true
+    config.LastTargetPosition = predictedPos
 end
 
 local function ultraFastSync(targetRoot, targetHumanoid, localRoot, deltaTime)
     local config = MainModule.Killaura
-    
-    if not maintainTargetConnection(localRoot, targetRoot, targetHumanoid) then
-        config.CurrentTarget = nil
-        config.IsAttached = false
-        return
-    end
     
     local targetPos = targetRoot.Position
     local targetVel = targetRoot.Velocity
@@ -792,21 +805,40 @@ local function ultraFastSync(targetRoot, targetHumanoid, localRoot, deltaTime)
     local isAnimationLift = handleAnimationLift(localRoot, targetPos, targetLook, targetVel, deltaTime)
     
     if isTargetJumping and not isAnimationLift then
-        syncHeightWithoutJump(localRoot, targetRoot, targetPos, deltaTime)
-    elseif config.JumpSync and not isTargetJumping then
+        syncJumpHeight(localRoot, targetRoot, targetPos, deltaTime)
+    elseif config.IsJumping and not isTargetJumping then
+        config.IsJumping = false
         config.JumpSync = false
+        config.JumpStartPosition = nil
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
-        if config.BodyVelocityCorrector then
-            config.BodyVelocityCorrector.Velocity = Vector3.new()
-        end
     end
     
-    ultraSmoothMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
+    smoothMovement(localRoot, targetPos, targetLook, deltaTime, isAnimationLift)
+    
+    -- ФИКС: Улучшенная обработка земли
+    if not isAnimationLift and not config.IsJumping and not config.IsLifted then
+        local rayOrigin = localRoot.Position + Vector3.new(0, 1, 0)
+        local ray = Ray.new(rayOrigin, Vector3.new(0, -5, 0))
+        local hit, hitPos = workspace:FindPartOnRayWithIgnoreList(ray, {localRoot.Parent})
+        
+        if hit then
+            local groundHeight = hitPos.Y
+            local currentHeight = localRoot.Position.Y
+            local heightDiff = currentHeight - groundHeight
+            
+            if heightDiff > 3.5 then
+                localRoot.Velocity = Vector3.new(0, -60, 0)
+            elseif heightDiff < 2.0 then
+                localRoot.Velocity = Vector3.new(0, 40, 0)
+            end
+        end
+    end
     
     config.LastPosition = localRoot.Position
     config.TargetLastVelocity = targetVel
     config.LastDirectionCheckTime = tick()
+    config.TargetLostTime = 0 -- Сброс таймера потери цели
 end
 
 local function checkAndSwitchTarget()
@@ -830,13 +862,25 @@ local function checkAndSwitchTarget()
             
             if localRoot and targetRoot then
                 local distance = (targetRoot.Position - localRoot.Position).Magnitude
-                if distance > config.AntiLoseTargetDistance and not config.TeleportIfFar then
-                    return false
+                
+                -- ФИКС: Увеличена максимальная дистанция и добавлена проверка телепортации
+                if distance > config.TeleportDetectionDistance then
+                    -- Если цель телепортировалась, пробуем её догнать
+                    config.TargetLostTime = config.TargetLostTime + task.wait()
+                    
+                    if config.TargetLostTime > config.MaxTargetLostTime then
+                        return false -- Меняем цель после долгой потери
+                    end
+                    return true -- Продолжаем пытаться преследовать
+                else
+                    config.TargetLostTime = 0 -- Сброс таймера если цель близко
                 end
+                
+                return true
             end
         end
         
-        return true
+        return false
     end
     
     return false
@@ -856,18 +900,37 @@ local function updateUltraFastSync(deltaTime)
     
     local config = MainModule.Killaura
     
-    if not config.NoClipEnabled then
-        setupNoClipAndTransparency(character)
+    -- ФИКС: Улучшенная обработка прозрачности
+    if not config.CollisionDisabled then
+        setupCollisionAndTransparency(character)
     end
     
-    if not checkAndSwitchTarget() then
-        local closestPlayer = findClosestPlayer()
-        if closestPlayer and closestPlayer ~= config.CurrentTarget then
+    local shouldSwitchTarget = not checkAndSwitchTarget()
+    
+    if shouldSwitchTarget then
+        config.CurrentTarget = nil
+        config.IsAttached = false
+        config.AnimationLiftActive = false
+        config.IsLifted = false
+        config.IsJumping = false
+        config.JumpSync = false
+        config.JumpStartPosition = nil
+        config.JumpStartAttachment = "behind"
+        config.JumpStartDistance = config.BehindDistance
+        
+        -- ФИКС: Восстанавливаем прозрачность при потере цели
+        restoreCollisionAndTransparency(character)
+        
+        -- Ищем новую цель с учетом текущей если она существует
+        local closestPlayer = findClosestPlayer(true)
+        if closestPlayer then
             config.CurrentTarget = closestPlayer
             config.IsAttached = true
             config.LastAnimationState = false
+            config.TargetLostTime = 0
             
-            setupNoClipAndTransparency(character)
+            -- ФИКС: Применяем прозрачность только если цель найдена
+            setupCollisionAndTransparency(character)
             
             local targetChar = closestPlayer.Character
             local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
@@ -889,25 +952,22 @@ local function updateUltraFastSync(deltaTime)
                 local desiredOffset = (attachmentType == "front") and (targetLook * desiredDistance) or (-targetLook * desiredDistance)
                 local startPos = targetRoot.Position + desiredOffset
                 
+                -- Плавный телепорт к новой цели
                 localRoot.CFrame = CFrame.new(startPos, targetRoot.Position)
                 
                 config.LastPosition = startPos
                 config.OriginalGroundHeight = startPos.Y
-                config.CurrentVelocity = Vector3.new()
+                config.CurrentVelocity = Vector3.new(0, 0, 0)
                 config.JumpStartAttachment = attachmentType
                 config.JumpStartDistance = desiredDistance
             end
         else
-            config.CurrentTarget = nil
-            config.IsAttached = false
-            config.AnimationLiftActive = false
-            config.IsLifted = false
-            config.JumpSync = false
-            config.JumpStartPosition = nil
-            config.JumpStartAttachment = "behind"
-            config.JumpStartDistance = config.BehindDistance
-            
-            restoreNoClipAndTransparency(character)
+            -- ФИКС: Если цели нет, выключаем киллауру
+            task.delay(0.1, function()
+                if config.Enabled and not config.CurrentTarget then
+                    MainModule.ToggleKillaura(false)
+                end
+            end)
             return
         end
     end
@@ -921,7 +981,8 @@ local function updateUltraFastSync(deltaTime)
     if not targetRoot or not targetHumanoid or targetHumanoid.Health <= 0 then
         config.CurrentTarget = nil
         config.IsAttached = false
-        restoreNoClipAndTransparency(character)
+        -- ФИКС: Восстанавливаем прозрачность при потере цели
+        restoreCollisionAndTransparency(character)
         return
     end
     
@@ -934,7 +995,10 @@ function MainModule.ToggleKillaura(enabled)
     if config.Enabled == enabled then return end
     
     if enabled then
-        if not findClosestPlayer() then return end
+        if not findClosestPlayer(true) then 
+            MainModule.ShowNotification("Killaura", "No target found", 2)
+            return 
+        end
         MainModule.ShowNotification("Killaura", "Killaura Enabled", 3)
     else
         MainModule.ShowNotification("Killaura", "Killaura Disabled", 3)
@@ -951,38 +1015,44 @@ function MainModule.ToggleKillaura(enabled)
         config.CurrentTarget = nil
         config.IsAttached = false
         config.IsLifted = false
-        config.JumpSync = false
+        config.IsJumping = false
         config.AnimationLiftActive = false
         config.LastAnimationState = false
+        config.JumpSync = false
         config.JumpStartPosition = nil
-        config.CurrentVelocity = Vector3.new()
+        config.CurrentVelocity = Vector3.new(0, 0, 0)
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
+        config.TargetLostTime = 0
         
         local localPlayer = game:GetService("Players").LocalPlayer
         if localPlayer and localPlayer.Character then
-            restoreNoClipAndTransparency(localPlayer.Character)
+            -- ФИКС: Всегда восстанавливаем прозрачность при выключении
+            restoreCollisionAndTransparency(localPlayer.Character)
         end
         return
     end
     
-    local closestPlayer = findClosestPlayer()
+    local closestPlayer = findClosestPlayer(true)
     if closestPlayer then
         config.CurrentTarget = closestPlayer
         config.IsAttached = true
         config.LastAnimationState = false
+        config.TargetLostTime = 0
         
         config.AnimationLiftActive = false
         config.IsLifted = false
+        config.IsJumping = false
         config.JumpSync = false
         config.JumpStartPosition = nil
-        config.CurrentVelocity = Vector3.new()
+        config.CurrentVelocity = Vector3.new(0, 0, 0)
         config.JumpStartAttachment = "behind"
         config.JumpStartDistance = config.BehindDistance
         
         local localPlayer = game:GetService("Players").LocalPlayer
         if localPlayer and localPlayer.Character then
-            setupNoClipAndTransparency(localPlayer.Character)
+            -- ФИКС: Применяем правильную прозрачность
+            setupCollisionAndTransparency(localPlayer.Character)
             
             local localRoot = localPlayer.Character:FindFirstChild("HumanoidRootPart")
             local targetChar = closestPlayer.Character
@@ -1005,17 +1075,19 @@ function MainModule.ToggleKillaura(enabled)
                 local desiredOffset = (attachmentType == "front") and (targetLook * desiredDistance) or (-targetLook * desiredDistance)
                 local startPos = targetRoot.Position + desiredOffset
                 
+                -- Плавный старт
                 localRoot.CFrame = CFrame.new(startPos, targetRoot.Position)
                 
                 config.LastPosition = startPos
                 config.OriginalGroundHeight = startPos.Y
-                config.CurrentVelocity = Vector3.new()
+                config.CurrentVelocity = Vector3.new(0, 0, 0)
                 config.JumpStartAttachment = attachmentType
                 config.JumpStartDistance = desiredDistance
             end
         end
     else
         config.Enabled = false
+        MainModule.ShowNotification("Killaura", "No valid target found", 2)
         return
     end
     
@@ -1033,22 +1105,31 @@ function MainModule.ToggleKillaura(enabled)
         local charConn = localPlayer.CharacterAdded:Connect(function(character)
             if not config.Enabled then return end
             
-            task.wait(0.2)
+            task.wait(0.2) -- Увеличена задержка
             
             config.CurrentTarget = nil
             config.IsAttached = false
             config.IsLifted = false
-            config.JumpSync = false
+            config.IsJumping = false
             config.AnimationLiftActive = false
             config.LastAnimationState = false
+            config.JumpSync = false
             config.JumpStartPosition = nil
-            config.CurrentVelocity = Vector3.new()
+            config.CurrentVelocity = Vector3.new(0, 0, 0)
             config.JumpStartAttachment = "behind"
             config.JumpStartDistance = config.BehindDistance
+            config.TargetLostTime = 0
             
-            setupNoClipAndTransparency(character)
+            -- ФИКС: Восстанавливаем старую прозрачность
+            restoreCollisionAndTransparency(character)
             
-            local closestPlayer = findClosestPlayer()
+            -- Ждем полной загрузки персонажа
+            task.wait(0.3)
+            
+            -- Применяем новую прозрачность
+            setupCollisionAndTransparency(character)
+            
+            local closestPlayer = findClosestPlayer(true)
             if closestPlayer then
                 config.CurrentTarget = closestPlayer
                 config.IsAttached = true
@@ -1060,7 +1141,8 @@ function MainModule.ToggleKillaura(enabled)
         
         local charRemovingConn = localPlayer.CharacterRemoving:Connect(function(character)
             if config.Enabled then
-                restoreNoClipAndTransparency(character)
+                -- ФИКС: Всегда восстанавливаем при удалении персонажа
+                restoreCollisionAndTransparency(character)
             end
         end)
         table.insert(config.Connections, charRemovingConn)
@@ -1068,17 +1150,33 @@ function MainModule.ToggleKillaura(enabled)
     
     local removeConn = players.PlayerRemoving:Connect(function(player)
         if config.Enabled and config.CurrentTarget == player then
+            config.CurrentTarget = nil
+            config.IsAttached = false
+            config.AnimationLiftActive = false
+            config.LastAnimationState = false
+            config.JumpSync = false
+            config.JumpStartPosition = nil
+            config.CurrentVelocity = Vector3.new(0, 0, 0)
+            config.JumpStartAttachment = "behind"
+            config.JumpStartDistance = config.BehindDistance
+            config.TargetLostTime = 0
+            
             local localPlayer = players.LocalPlayer
             if localPlayer and localPlayer.Character then
-                setupNoClipAndTransparency(localPlayer.Character)
+                -- ФИКС: Не меняем прозрачность при смене цели
+                -- setupCollisionAndTransparency(localPlayer.Character)
             end
             
-            local closestPlayer = findClosestPlayer()
+            local closestPlayer = findClosestPlayer(true)
             if closestPlayer then
                 config.CurrentTarget = closestPlayer
                 config.IsAttached = true
             else
-                MainModule.ToggleKillaura(false)
+                task.delay(0.2, function()
+                    if config.Enabled and not config.CurrentTarget then
+                        MainModule.ToggleKillaura(false)
+                    end
+                end)
             end
         end
     end)
