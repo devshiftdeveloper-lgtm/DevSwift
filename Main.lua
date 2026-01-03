@@ -156,6 +156,7 @@ local function IsHider(player)
     return player:GetAttribute("IsHider") == true
 end
 
+
 local function IsSeeker(player)
     if not player then return false end
     return player:GetAttribute("IsHunter") == true
@@ -267,6 +268,11 @@ MainModule.Killaura = {
 
 for _, animId in pairs(MainModule.Killaura.TeleportAnimations) do
     MainModule.Killaura.TargetAnimationsSet[animId] = true
+end
+
+MainModule.IsHider = function(player)
+    if not player then return false end
+    return player:GetAttribute("IsHider") == true
 end
 
 local function GetHider()
