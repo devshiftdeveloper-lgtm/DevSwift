@@ -2446,6 +2446,8 @@ function MainModule.ForceStopAutoGonggi()
     MainModule.ToggleAutoGonggi(false)
 end
 
+вот запомни авто додж
+
 MainModule.AutoDodge = {
     Enabled = false,
     AnimationIds = {
@@ -2831,14 +2833,9 @@ end
 -- ============ УПРАВЛЕНИЕ СИСТЕМОЙ ============
 
 function MainModule.ToggleAutoDodge(enabled)
-    if enabled and not IsGameActive("HideAndSeek") then
-        MainModule.SnowNotification("AutoDodge", "HideAndSeek game not active", 2)
-        MainModule.AutoDodge.Enabled = false
-        return
-    end
-    
     MainModule.AutoDodge.Enabled = false
     
+    -- Очистка всех соединений
     for _, conn in pairs(MainModule.AutoDodge.Connections) do
         if conn then
             pcall(function() conn:Disconnect() end)
@@ -2851,29 +2848,17 @@ function MainModule.ToggleAutoDodge(enabled)
     
     if enabled then
         MainModule.AutoDodge.Enabled = true
+        -- Добавляем уведомление
+        MainModule.ShowNotification("Auto Dodge", "Auto Dodge Enabled", 3)
         
         local Players = game:GetService("Players")
         
-        local checkGameActiveConnection = RunService.Heartbeat:Connect(function()
-            if not IsGameActive("HideAndSeek") then
-                MainModule.AutoDodge.Enabled = false
-                for _, conn in pairs(MainModule.AutoDodge.Connections) do
-                    if conn then
-                        pcall(function() conn:Disconnect() end)
-                    end
-                end
-                MainModule.AutoDodge.Connections = {}
-                MainModule.AutoDodge.TrackedPlayers = {}
-                MainModule.AutoDodge.LastDodgeTime = 0
-                MainModule.SnowNotification("AutoDodge", "HideAndSeek ended - AutoDodge disabled", 2)
-            end
-        end)
-        table.insert(MainModule.AutoDodge.Connections, checkGameActiveConnection)
-        
+        -- Мгновенная инициализация всех игроков
         for _, player in pairs(Players:GetPlayers()) do
             setupInstantPlayerTracking(player)
         end
         
+        -- Отслеживание новых игроков
         local playerAddedConn = Players.PlayerAdded:Connect(function(player)
             if MainModule.AutoDodge.Enabled then
                 setupInstantPlayerTracking(player)
@@ -2881,10 +2866,11 @@ function MainModule.ToggleAutoDodge(enabled)
         end)
         table.insert(MainModule.AutoDodge.Connections, playerAddedConn)
         
+        -- Дополнительный мониторинг для максимальной скорости
         setupInstantReactionMonitor()
-        MainModule.SnowNotification("AutoDodge", "AutoDodge: ON", 2)
     else
-        MainModule.SnowNotification("AutoDodge", "AutoDodge: OFF", 2)
+        -- Добавляем уведомление при выключении
+        MainModule.ShowNotification("Auto Dodge", "Auto Dodge Disabled", 3)
     end
 end
 
@@ -2896,7 +2882,6 @@ local LocalPlayer = Players.LocalPlayer
 Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then
         MainModule.ToggleAutoDodge(false)
-        MainModule.SnowNotification("AutoDodge", "AutoDodge disabled - local player left", 2)
     elseif MainModule.AutoDodge.TrackedPlayers[player.Name] then
         for _, conn in pairs(MainModule.AutoDodge.TrackedPlayers[player.Name]) do
             pcall(function() conn:Disconnect() end)
