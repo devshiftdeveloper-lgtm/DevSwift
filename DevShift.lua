@@ -1,3 +1,4 @@
+запомни код DevShift.lua
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -242,6 +243,7 @@ end
 
 task.spawn(createAimSightGUI)
 
+-- Создаем основной GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "DevShiftGUI"
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
@@ -337,6 +339,7 @@ titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.ZIndex = 5
 titleLabel.Parent = topBar
 
+-- Кнопка закрытия для мобильных
 local closeButton
 if isMobile then
     closeButton = Instance.new("TextButton")
@@ -405,6 +408,7 @@ tabsListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 tabsListLayout.FillDirection = isMobile and Enum.FillDirection.Horizontal or Enum.FillDirection.Vertical
 tabsListLayout.Parent = tabsList
 
+-- Контейнер для функций
 local functionsContainer = Instance.new("Frame")
 functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -60) or UDim2.new(0.8, -4, 1, 0)
 functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 55) or UDim2.new(0.2, 4, 0, 0)
@@ -445,93 +449,47 @@ if isMobile then
     openButtonStroke.Thickness = 1.5
     openButtonStroke.ZIndex = 1000
     openButtonStroke.Parent = openButton
-end
-
--- Переменные для перемещения GUI
-local isDragging = false
-local dragStart
-local startPos
-
--- Для кнопки OPEN на мобильных
-local openButtonIsDragging = false
-local openButtonDragStart
-local openButtonStartPos
-local openButtonTouchStartTime = 0
-local openButtonTouchDuration = 0
-
--- Функция для включения/выключения перемещения основного меню
-local function setupDragging(frame, handle)
-    handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            isDragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-        end
-    end)
     
-    handle.InputChanged:Connect(function(input)
-        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+    local isDraggingOpenButton = false
+    local dragStartOpenButton
+    local startPosOpenButton
     
-    handle.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            isDragging = false
-        end
-    end)
-end
-
--- Настройка перемещения для основного контейнера
-setupDragging(mainContainer, topBar)
-
--- Настройка перемещения для кнопки OPEN на мобильных
-if isMobile and openButton then
     openButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            openButtonTouchStartTime = tick()
-            openButtonDragStart = input.Position
-            openButtonStartPos = openButton.Position
-            openButtonIsDragging = false
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDraggingOpenButton = true
+            dragStartOpenButton = input.Position
+            startPosOpenButton = openButton.Position
+            openButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
         end
     end)
     
     openButton.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            local currentTime = tick()
-            local touchDuration = currentTime - openButtonTouchStartTime
-            
-            -- Если тач длится больше 0.2 секунды - начинаем перемещение
-            if touchDuration > 1 and not openButtonIsDragging then
-                openButtonIsDragging = true
-            end
-            
-            if openButtonIsDragging then
-                local delta = input.Position - openButtonDragStart
-                openButton.Position = UDim2.new(
-                    openButtonStartPos.X.Scale, 
-                    openButtonStartPos.X.Offset + delta.X,
-                    openButtonStartPos.Y.Scale, 
-                    openButtonStartPos.Y.Offset + delta.Y
-                )
-            end
+        if isDraggingOpenButton and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStartOpenButton
+            openButton.Position = UDim2.new(
+                startPosOpenButton.X.Scale, 
+                startPosOpenButton.X.Offset + delta.X,
+                startPosOpenButton.Y.Scale, 
+                startPosOpenButton.Y.Offset + delta.Y
+            )
         end
     end)
     
     openButton.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            local currentTime = tick()
-            openButtonTouchDuration = currentTime - openButtonTouchStartTime
-            
-            -- Если тач был коротким (менее 0.2 секунды) и мы не перемещали кнопку - открываем меню
-            if openButtonTouchDuration < 1 and not openButtonIsDragging then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDraggingOpenButton = false
+            openButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            local delta = input.Position - (dragStartOpenButton or Vector2.new(0, 0))
+            if math.abs(delta.X) < 5 and math.abs(delta.Y) < 5 then
                 showMenu()
             end
-            
-            openButtonIsDragging = false
         end
     end)
+    
+    if UserInputService.TouchEnabled then
+        openButton.Size = UDim2.new(0, 90, 0, 50)
+        openButton.TextSize = 20
+    end
 end
 
 local toggleElements = {}
@@ -983,6 +941,43 @@ local function showTabContent(tabName)
     end
 end
 
+-- Переменные для перемещения GUI
+local isDragging = false
+local dragStart
+local startPos
+
+-- Функция для включения/выключения перемещения
+local function setupDragging(frame, handle)
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+    
+    handle.InputChanged:Connect(function(input)
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    
+    handle.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = false
+        end
+    end)
+end
+
+-- Настройка перемещения для основного контейнера
+setupDragging(mainContainer, topBar)
+
+-- Настройка перемещения для кнопки OPEN на мобильных
+if isMobile and openButton then
+    setupDragging(openButton, openButton)
+end
+
 local function showMenu()
     if isMenuOpen then return end
     isMenuOpen = true
@@ -1053,6 +1048,13 @@ end
 if closeButton then
     closeButton.MouseButton1Down:Connect(function()
         hideMenu()
+    end)
+end
+
+-- Обработчик для кнопки открытия на мобильных
+if isMobile and openButton then
+    openButton.MouseButton1Down:Connect(function()
+        showMenu()
     end)
 end
 
