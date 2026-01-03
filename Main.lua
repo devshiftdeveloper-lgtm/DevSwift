@@ -2028,7 +2028,10 @@ end
 
 MainModule.SpikesKillFeature = {
     Enabled = false,
-    AnimationId = "rbxassetid://105341857343164",
+    AnimationIds = {
+        "rbxassetid://105341857343164",  -- Первая анимация
+        "rbxassetid://95623680038308"    -- Вторая анимация
+    },
     SpikesPosition = nil,
     PlatformHeightOffset = 5,
     ReturnDelay = 0.6,
@@ -2053,6 +2056,7 @@ function MainModule.ToggleSpikesKill(enabled)
         return
     end
     
+    -- Отключаем все соединения
     if MainModule.SpikesKillFeature.AnimationConnection then
         MainModule.SpikesKillFeature.AnimationConnection:Disconnect()
         MainModule.SpikesKillFeature.AnimationConnection = nil
@@ -2070,23 +2074,50 @@ function MainModule.ToggleSpikesKill(enabled)
         MainModule.SpikesKillFeature.AnimationCheckConnection = nil
     end
     
+    -- Очищаем соединения для остановки анимаций
     for _, conn in ipairs(MainModule.SpikesKillFeature.AnimationStoppedConnections) do
         pcall(function() conn:Disconnect() end)
     end
     MainModule.SpikesKillFeature.AnimationStoppedConnections = {}
     
+    -- Сбрасываем состояние
     MainModule.SpikesKillFeature.OriginalCFrame = nil
     MainModule.SpikesKillFeature.ActiveAnimation = false
     MainModule.SpikesKillFeature.AnimationStartTime = 0
     MainModule.SpikesKillFeature.TrackedAnimations = {}
     MainModule.SpikesKillFeature.NoKnifeTimer = 0
     
+    -- Если функция отключается
     if not enabled then
+        -- Восстанавливаем шипы, если они были удалены
+        if MainModule.SpikesKillFeature.SpikesRemoved then
+            pcall(function()
+                local hideAndSeekMap = workspace:FindFirstChild("HideAndSeekMap")
+                local killingParts = hideAndSeekMap and hideAndSeekMap:FindFirstChild("KillingParts")
+                if killingParts then
+                    -- Очищаем существующие шипы
+                    for _, child in pairs(killingParts:GetChildren()) do
+                        if child:IsA("BasePart") then
+                            child:Destroy()
+                        end
+                    end
+                    
+                    -- Восстанавливаем оригинальные шипы
+                    for _, spike in ipairs(MainModule.SpikesKillFeature.OriginalSpikes) do
+                        spike:Clone().Parent = killingParts
+                    end
+                end
+                MainModule.SpikesKillFeature.SpikesRemoved = false
+                MainModule.SpikesKillFeature.OriginalSpikes = {}
+            end)
+        end
+        
         MainModule.ShowNotification("Spikes Kill", "Disabled", 2)
         MainModule.SpikesKillFeature.Enabled = false
         return
     end
     
+    -- Удаляем шипы для предотвращения настоящих убийств
     pcall(function()
         local hideAndSeekMap = workspace:FindFirstChild("HideAndSeekMap")
         local killingParts = hideAndSeekMap and hideAndSeekMap:FindFirstChild("KillingParts")
@@ -2105,6 +2136,7 @@ function MainModule.ToggleSpikesKill(enabled)
         end
     end)
     
+    -- Функция телепортации к шипам
     local function teleportToSpikes(character)
         if not character or not character:FindFirstChild("HumanoidRootPart") then
             return
@@ -2118,6 +2150,7 @@ function MainModule.ToggleSpikesKill(enabled)
         end
     end
     
+    -- Функция возврата на исходную позицию
     local function returnToOriginalPosition(character)
         if not character or not character:FindFirstChild("HumanoidRootPart") then
             return
@@ -2129,13 +2162,24 @@ function MainModule.ToggleSpikesKill(enabled)
         end
     end
     
+    -- Проверка, является ли анимация анимацией убийства
+    local function isKillAnimation(animationId)
+        for _, id in ipairs(MainModule.SpikesKillFeature.AnimationIds) do
+            if animationId == id then
+                return true
+            end
+        end
+        return false
+    end
+    
+    -- Настройка обработки анимаций для персонажа
     local function setupCharacter(char)
         local humanoid = char:WaitForChild("Humanoid")
         
         MainModule.SpikesKillFeature.AnimationConnection = humanoid.AnimationPlayed:Connect(function(track)
             if not MainModule.SpikesKillFeature.Enabled then return end
             
-            if track.Animation and track.Animation.AnimationId == MainModule.SpikesKillFeature.AnimationId then
+            if track.Animation and isKillAnimation(track.Animation.AnimationId) then
                 MainModule.SpikesKillFeature.TrackedAnimations[track] = true
                 
                 if not MainModule.SpikesKillFeature.ActiveAnimation then
@@ -2159,16 +2203,19 @@ function MainModule.ToggleSpikesKill(enabled)
         end)
     end
     
+    -- Настраиваем для текущего персонажа
     local char = LocalPlayer.Character
     if char then
         setupCharacter(char)
     end
     
+    -- Настраиваем для будущих персонажей
     MainModule.SpikesKillFeature.CharacterAddedConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
         task.wait(1)
         setupCharacter(newChar)
     end)
     
+    -- Проверка безопасности
     MainModule.SpikesKillFeature.SafetyCheckConnection = RunService.Heartbeat:Connect(function()
         if not MainModule.SpikesKillFeature.Enabled then 
             if MainModule.SpikesKillFeature.SafetyCheckConnection then
@@ -2178,12 +2225,14 @@ function MainModule.ToggleSpikesKill(enabled)
             return 
         end
         
+        -- Проверяем, активна ли игра
         if not IsGameActive("HideAndSeek") then
             MainModule.SpikesKillFeature.Enabled = false
             MainModule.ShowNotification("Spikes Kill", "Game ended - disabled", 2)
             return
         end
         
+        -- Таймаут для анимации (на всякий случай)
         if MainModule.SpikesKillFeature.ActiveAnimation and tick() - MainModule.SpikesKillFeature.AnimationStartTime >= 10 then
             local character = GetCharacter()
             if character and MainModule.SpikesKillFeature.OriginalCFrame then
