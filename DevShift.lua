@@ -418,6 +418,7 @@ local functionsCorner = Instance.new("UICorner")
 functionsCorner.CornerRadius = UDim.new(0, 8)
 functionsCorner.Parent = functionsContainer
 
+-- Кнопка OPEN для мобильных устройств
 local openButton
 if isMobile then
     openButton = Instance.new("TextButton")
@@ -431,7 +432,7 @@ if isMobile then
     openButton.TextColor3 = Color3.fromRGB(240, 240, 240)
     openButton.TextSize = 18
     openButton.Font = Enum.Font.GothamBold
-    openButton.Visible = false
+    openButton.Visible = true
     openButton.ZIndex = 1000
     openButton.AutoButtonColor = true
     openButton.Parent = screenGui
@@ -446,51 +447,47 @@ if isMobile then
     openButtonStroke.ZIndex = 1000
     openButtonStroke.Parent = openButton
     
+    -- Система перетаскивания для кнопки OPEN
     local isDraggingOpenButton = false
     local dragStartOpenButton
     local startPosOpenButton
-    local wasDragged = false
     
     openButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.Touch then
             isDraggingOpenButton = true
             dragStartOpenButton = input.Position
             startPosOpenButton = openButton.Position
-            wasDragged = false
-            openButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
         end
     end)
     
     openButton.InputChanged:Connect(function(input)
-        if isDraggingOpenButton and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        if isDraggingOpenButton and input.UserInputType == Enum.UserInputType.Touch then
             local delta = input.Position - dragStartOpenButton
-            
-            if math.abs(delta.X) > 10 or math.abs(delta.Y) > 10 then
-                wasDragged = true
-            end
-            
-            if wasDragged then
-                openButton.Position = UDim2.new(
-                    startPosOpenButton.X.Scale, 
-                    startPosOpenButton.X.Offset + delta.X,
-                    startPosOpenButton.Y.Scale, 
-                    startPosOpenButton.Y.Offset + delta.Y
-                )
-            end
+            openButton.Position = UDim2.new(
+                startPosOpenButton.X.Scale, 
+                startPosOpenButton.X.Offset + delta.X,
+                startPosOpenButton.Y.Scale, 
+                startPosOpenButton.Y.Offset + delta.Y
+            )
         end
     end)
     
     openButton.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.Touch then
             isDraggingOpenButton = false
             openButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
             
-            if not wasDragged then
+            -- Проверяем, было ли это короткое нажатие (не перетаскивание)
+            local delta = input.Position - dragStartOpenButton
+            local moveDistance = math.sqrt(delta.X * delta.X + delta.Y * delta.Y)
+            
+            if moveDistance < 10 then
                 showMenu()
             end
         end
     end)
     
+    -- Увеличиваем размер для удобства на мобильных
     if UserInputService.TouchEnabled then
         openButton.Size = UDim2.new(0, 90, 0, 50)
         openButton.TextSize = 20
@@ -688,6 +685,289 @@ end
 
 local currentContentFrame
 local createdSections = {}
+
+-- Функции для создания контента вкладок
+local function createCombatContent()
+    if currentContentFrame then
+        currentContentFrame:Destroy()
+        currentContentFrame = nil
+    end
+    
+    createdSections = {}
+    
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = "CombatContent"
+    contentFrame.Size = UDim2.new(1, -16, 1, -16)
+    contentFrame.Position = UDim2.new(0, 8, 0, 8)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.ZIndex = 8
+    contentFrame.Parent = functionsContainer
+    
+    local scrollingFrame = Instance.new("ScrollingFrame")
+    scrollingFrame.Name = "CombatScrolling"
+    scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollingFrame.BackgroundTransparency = 1
+    scrollingFrame.BorderSizePixel = 0
+    scrollingFrame.ScrollBarThickness = isMobile and 10 or 6
+    scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(40, 40, 40)
+    scrollingFrame.ScrollBarImageTransparency = 0.5
+    scrollingFrame.ZIndex = 9
+    scrollingFrame.Parent = contentFrame
+    
+    local combatContainer = Instance.new("Frame")
+    combatContainer.Name = "CombatContainer"
+    combatContainer.Size = UDim2.new(1, 0, 0, 0)
+    combatContainer.BackgroundTransparency = 1
+    combatContainer.ZIndex = 10
+    combatContainer.Parent = scrollingFrame
+    
+    local combatLayout = Instance.new("UIListLayout")
+    combatLayout.Padding = UDim.new(0, 15)
+    combatLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    combatLayout.Parent = combatContainer
+    
+    local sections = {
+        {
+            title = "COMBAT",
+            items = {
+                {name = "KILLAURA", func = "ToggleKillaura", type = "toggle", getState = function() return MainModule.Killaura and MainModule.Killaura.Enabled or false end},
+                {name = "ESP", func = "ToggleESP", type = "toggle", getState = function() return MainModule.Misc and MainModule.Misc.ESPEnabled or false end}
+            }
+        }
+    }
+    
+    for i, section in ipairs(sections) do
+        if createdSections[section.title] then continue end
+        
+        local sectionFrame = Instance.new("Frame")
+        sectionFrame.Name = "Section_" .. i
+        sectionFrame.Size = UDim2.new(1, 0, 0, 0)
+        sectionFrame.BackgroundTransparency = 1
+        sectionFrame.LayoutOrder = i
+        sectionFrame.ZIndex = 11
+        sectionFrame.Parent = combatContainer
+        
+        local sectionTitle = Instance.new("TextLabel")
+        sectionTitle.Size = UDim2.new(1, 0, 0, isMobile and 35 or 30)
+        sectionTitle.Position = UDim2.new(0, 0, 0, 1)
+        sectionTitle.BackgroundTransparency = 1
+        sectionTitle.Text = section.title
+        sectionTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+        sectionTitle.TextSize = isMobile and 16 or 14
+        sectionTitle.Font = Enum.Font.GothamBold
+        sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+        sectionTitle.ZIndex = 12
+        sectionTitle.Parent = sectionFrame
+        
+        local titleStroke = Instance.new("UIStroke")
+        titleStroke.Color = Color3.fromRGB(50, 50, 50)
+        titleStroke.Thickness = 1
+        titleStroke.ZIndex = 12
+        titleStroke.Parent = sectionTitle
+        
+        local itemsContainer = Instance.new("Frame")
+        itemsContainer.Size = UDim2.new(1, 0, 0, 0)
+        itemsContainer.Position = UDim2.new(0, 0, 0, isMobile and 40 or 35)
+        itemsContainer.BackgroundTransparency = 1
+        itemsContainer.ZIndex = 12
+        itemsContainer.Parent = sectionFrame
+        
+        local itemsLayout = Instance.new("UIListLayout")
+        itemsLayout.Padding = UDim.new(0, 10)
+        itemsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        itemsLayout.Parent = itemsContainer
+        
+        local itemCount = 0
+        
+        for _, item in ipairs(section.items) do
+            if item.type == "toggle" then
+                local toggle = createModernToggle(itemsContainer, item.name, 
+                    item.getState and item.getState() or false,
+                    function(state)
+                        if MainModule[item.func] then
+                            MainModule[item.func](state)
+                        end
+                    end)
+                itemCount = itemCount + 1
+            elseif item.type == "button" then
+                local button = createModernButton(itemsContainer, item.name, function()
+                    if MainModule[item.func] then
+                        MainModule[item.func]()
+                    end
+                end)
+                itemCount = itemCount + 1
+            end
+        end
+        
+        local totalItemHeight = itemCount * (isMobile and 45 or 40) + (itemCount - 1) * 10
+        itemsContainer.Size = UDim2.new(1, 0, 0, totalItemHeight)
+        sectionFrame.Size = UDim2.new(1, 0, 0, (isMobile and 40 or 35) + totalItemHeight)
+        
+        createdSections[section.title] = true
+    end
+    
+    combatLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        combatContainer.Size = UDim2.new(1, 0, 0, combatLayout.AbsoluteContentSize.Y)
+        scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, combatLayout.AbsoluteContentSize.Y)
+    end)
+    
+    task.wait(0.1)
+    combatContainer.Size = UDim2.new(1, 0, 0, combatLayout.AbsoluteContentSize.Y)
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, combatLayout.AbsoluteContentSize.Y)
+    
+    return contentFrame
+end
+
+local function createMiscContent()
+    if currentContentFrame then
+        currentContentFrame:Destroy()
+        currentContentFrame = nil
+    end
+    
+    createdSections = {}
+    
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = "MiscContent"
+    contentFrame.Size = UDim2.new(1, -16, 1, -16)
+    contentFrame.Position = UDim2.new(0, 8, 0, 8)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.ZIndex = 8
+    contentFrame.Parent = functionsContainer
+    
+    local scrollingFrame = Instance.new("ScrollingFrame")
+    scrollingFrame.Name = "MiscScrolling"
+    scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollingFrame.BackgroundTransparency = 1
+    scrollingFrame.BorderSizePixel = 0
+    scrollingFrame.ScrollBarThickness = isMobile and 10 or 6
+    scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(40, 40, 40)
+    scrollingFrame.ScrollBarImageTransparency = 0.5
+    scrollingFrame.ZIndex = 9
+    scrollingFrame.Parent = contentFrame
+    
+    local miscContainer = Instance.new("Frame")
+    miscContainer.Name = "MiscContainer"
+    miscContainer.Size = UDim2.new(1, 0, 0, 0)
+    miscContainer.BackgroundTransparency = 1
+    miscContainer.ZIndex = 10
+    miscContainer.Parent = scrollingFrame
+    
+    local miscLayout = Instance.new("UIListLayout")
+    miscLayout.Padding = UDim.new(0, 15)
+    miscLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    miscLayout.Parent = miscContainer
+    
+    local sections = {
+        {
+            title = "FAN",
+            items = {
+                {name = "UNLOCK DASH", func = "ToggleFreeDash", type = "toggle", getState = function() return MainModule.FreeDash and MainModule.FreeDash.Enabled or false end},
+                {name = "RAGE QTE", func = "ToggleAntiStunQTE", type = "toggle", getState = function() return MainModule.AutoQTE and MainModule.AutoQTE.AntiStunEnabled or false end},
+                {name = "ANTI RAGDOLL", func = "ToggleBypassRagdoll", type = "toggle", getState = function() return MainModule.Misc and MainModule.Misc.BypassRagdollEnabled or false end},
+                {name = "DISABLE STUN", func = "ToggleRemoveStun", type = "toggle", getState = function() return MainModule.Misc and MainModule.Misc.RemoveStunEnabled or false end}
+            }
+        },
+        {
+            title = "TELEPORT",
+            items = {
+                {name = "TELEPORT UP 100", func = "TeleportUp100", type = "button"},
+                {name = "TELEPORT DOWN 40", func = "TeleportDown40", type = "button"}
+            }
+        },
+        {
+            title = "GAMEPASS",
+            items = {
+                {name = "PERMANENT GUARD", func = "EnablePermanentGuard", type = "button"},
+                {name = "GLASS MANUFACTURER VISION", func = "EnableGlassManufacturerVision", type = "button"},
+                {name = "FREE VIP", func = "EnableFreeVIP", type = "button"},
+                {name = "EMOTE PAGES", func = "EnableEmotePages", type = "button"},
+                {name = "CUSTOM PLAYER TAG", func = "EnableCustomPlayerTag", type = "button"},
+                {name = "PRIVATE SERVER+", func = "EnablePrivateServerPlus", type = "button"}
+            }
+        }
+    }
+    
+    for i, section in ipairs(sections) do
+        if createdSections[section.title] then continue end
+        
+        local sectionFrame = Instance.new("Frame")
+        sectionFrame.Name = "Section_" .. i
+        sectionFrame.Size = UDim2.new(1, 0, 0, 0)
+        sectionFrame.BackgroundTransparency = 1
+        sectionFrame.LayoutOrder = i
+        sectionFrame.ZIndex = 11
+        sectionFrame.Parent = miscContainer
+        
+        local sectionTitle = Instance.new("TextLabel")
+        sectionTitle.Size = UDim2.new(1, 0, 0, isMobile and 35 or 30)
+        sectionTitle.Position = UDim2.new(0, 0, 0, 1)
+        sectionTitle.BackgroundTransparency = 1
+        sectionTitle.Text = section.title
+        sectionTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+        sectionTitle.TextSize = isMobile and 16 or 14
+        sectionTitle.Font = Enum.Font.GothamBold
+        sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+        sectionTitle.ZIndex = 12
+        sectionTitle.Parent = sectionFrame
+        
+        local titleStroke = Instance.new("UIStroke")
+        titleStroke.Color = Color3.fromRGB(50, 50, 50)
+        titleStroke.Thickness = 1
+        titleStroke.ZIndex = 12
+        titleStroke.Parent = sectionTitle
+        
+        local itemsContainer = Instance.new("Frame")
+        itemsContainer.Size = UDim2.new(1, 0, 0, 0)
+        itemsContainer.Position = UDim2.new(0, 0, 0, isMobile and 40 or 35)
+        itemsContainer.BackgroundTransparency = 1
+        itemsContainer.ZIndex = 12
+        itemsContainer.Parent = sectionFrame
+        
+        local itemsLayout = Instance.new("UIListLayout")
+        itemsLayout.Padding = UDim.new(0, 10)
+        itemsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        itemsLayout.Parent = itemsContainer
+        
+        local itemCount = 0
+        
+        for _, item in ipairs(section.items) do
+            if item.type == "toggle" then
+                local toggle = createModernToggle(itemsContainer, item.name, 
+                    item.getState and item.getState() or false,
+                    function(state)
+                        if MainModule[item.func] then
+                            MainModule[item.func](state)
+                        end
+                    end)
+                itemCount = itemCount + 1
+            elseif item.type == "button" then
+                local button = createModernButton(itemsContainer, item.name, function()
+                    if MainModule[item.func] then
+                        MainModule[item.func]()
+                    end
+                end)
+                itemCount = itemCount + 1
+            end
+        end
+        
+        local totalItemHeight = itemCount * (isMobile and 45 or 40) + (itemCount - 1) * 10
+        itemsContainer.Size = UDim2.new(1, 0, 0, totalItemHeight)
+        sectionFrame.Size = UDim2.new(1, 0, 0, (isMobile and 40 or 35) + totalItemHeight)
+        
+        createdSections[section.title] = true
+    end
+    
+    miscLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        miscContainer.Size = UDim2.new(1, 0, 0, miscLayout.AbsoluteContentSize.Y)
+        scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, miscLayout.AbsoluteContentSize.Y)
+    end)
+    
+    task.wait(0.1)
+    miscContainer.Size = UDim2.new(1, 0, 0, miscLayout.AbsoluteContentSize.Y)
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, miscLayout.AbsoluteContentSize.Y)
+    
+    return contentFrame
+end
 
 local function createGamesContent()
     if currentContentFrame then
@@ -923,6 +1203,10 @@ local function showTabContent(tabName)
     
     if tabName == "Games" then
         currentContentFrame = createGamesContent()
+    elseif tabName == "Combat" then
+        currentContentFrame = createCombatContent()
+    elseif tabName == "Misc" then
+        currentContentFrame = createMiscContent()
     else
         currentContentFrame = createEmptyContent(tabName)
     end
@@ -977,11 +1261,6 @@ end
 
 -- Настройка перемещения для основного контейнера
 setupDragging(mainContainer, topBar)
-
--- Настройка перемещения для кнопки OPEN на мобильных
-if isMobile and openButton then
-    setupDragging(openButton, openButton)
-end
 
 local function showMenu()
     if isMenuOpen then return end
