@@ -262,7 +262,7 @@ background.Parent = screenGui
 
 local mainContainer = Instance.new("Frame")
 mainContainer.Name = "MainContainer"
-mainContainer.Size = isMobile and UDim2.new(0.92, 0, 0.85, 0) or UDim2.new(0, 780, 0, 520)
+mainContainer.Size = isMobile and UDim2.new(0.95, 0, 0.9, 0) or UDim2.new(0, 780, 0, 520)
 mainContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 mainContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
 mainContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
@@ -312,7 +312,7 @@ contentContainer.ZIndex = 3
 contentContainer.Parent = mainContainer
 
 local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, isMobile and 70 or 66) -- Увеличил высоту для мобильных
+topBar.Size = UDim2.new(1, 0, 0, isMobile and 80 or 66)
 topBar.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 topBar.BackgroundTransparency = 1 -- Начальная прозрачность 1
 topBar.BorderSizePixel = 0
@@ -324,63 +324,65 @@ topBarCorner.CornerRadius = UDim.new(0, 12)
 topBarCorner.Parent = topBar
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = isMobile and UDim2.new(1, -80, 1, 0) or UDim2.new(1, -50, 1, 0) -- Увеличил отступ
+titleLabel.Size = isMobile and UDim2.new(1, -100, 1, 0) or UDim2.new(1, -50, 1, 0)
 titleLabel.Position = UDim2.new(0, isMobile and 20 or 25, 0, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text = "DEVSHIFT"
 titleLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-titleLabel.TextSize = isMobile and 28 or 32
+titleLabel.TextSize = isMobile and 32 or 32
 titleLabel.Font = Enum.Font.GothamBlack
 titleLabel.TextTransparency = 1
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.ZIndex = 5
 titleLabel.Parent = topBar
 
+-- Кнопка закрытия для мобильных (используем букву "X" вместо символа)
 local closeButton
 if isMobile then
     closeButton = Instance.new("TextButton")
     closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 56, 0, 56) -- Увеличил размер для мобильных
+    closeButton.Size = UDim2.new(0, 65, 0, 65) -- Больше для мобильных
     closeButton.Position = UDim2.new(1, -15, 0.5, 0)
     closeButton.AnchorPoint = Vector2.new(1, 0.5)
     closeButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     closeButton.BackgroundTransparency = 1 -- Начальная прозрачность 1
     closeButton.BorderSizePixel = 0
-    closeButton.Text = "✕"
+    closeButton.Text = "X" -- Простая буква X вместо символа
     closeButton.TextColor3 = Color3.fromRGB(220, 220, 220)
-    closeButton.TextSize = 34 -- Увеличил размер текста
+    closeButton.TextSize = 32 -- Увеличил размер текста
     closeButton.Font = Enum.Font.GothamBold
     closeButton.TextTransparency = 1
-    closeButton.ZIndex = 6
-    closeButton.AutoButtonColor = true -- Включил AutoButtonColor для мобильных
+    closeButton.ZIndex = 10 -- ВЫСОКИЙ ZIndex
+    closeButton.AutoButtonColor = true
     closeButton.Parent = topBar
 
     local closeButtonCorner = Instance.new("UICorner")
-    closeButtonCorner.CornerRadius = UDim.new(0, 12) -- Увеличил радиус
+    closeButtonCorner.CornerRadius = UDim.new(0, 12)
     closeButtonCorner.Parent = closeButton
 
     local closeButtonStroke = Instance.new("UIStroke")
     closeButtonStroke.Color = Color3.fromRGB(60, 60, 60)
     closeButtonStroke.Thickness = 2
     closeButtonStroke.Transparency = 1
-    closeButtonStroke.ZIndex = 6
+    closeButtonStroke.ZIndex = 10
     closeButtonStroke.Parent = closeButton
 end
 
 local mainContent = Instance.new("Frame")
-mainContent.Size = UDim2.new(1, 0, 1, -(isMobile and 80 or 76)) -- Увеличил отступ
-mainContent.Position = UDim2.new(0, 0, 0, isMobile and 80 or 76) -- Увеличил отступ
+mainContent.Size = UDim2.new(1, 0, 1, -(isMobile and 90 or 76))
+mainContent.Position = UDim2.new(0, 0, 0, isMobile and 90 or 76)
 mainContent.BackgroundTransparency = 1
 mainContent.ZIndex = 4
 mainContent.Parent = contentContainer
 
+-- Контейнер для вкладок (ГОРИЗОНТАЛЬНЫЙ для мобильных)
 local tabsContainer = Instance.new("Frame")
-tabsContainer.Size = isMobile and UDim2.new(1, 0, 0, 60) or UDim2.new(0.2, -5, 1, 0) -- Увеличил высоту
+tabsContainer.Size = isMobile and UDim2.new(1, 0, 0, 70) or UDim2.new(0.2, -5, 1, 0)
 tabsContainer.Position = isMobile and UDim2.new(0, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
 tabsContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 tabsContainer.BackgroundTransparency = 1 -- Начальная прозрачность 1
 tabsContainer.BorderSizePixel = 0
-tabsContainer.ZIndex = 5
+tabsContainer.ZIndex = 6 -- Увеличил ZIndex для мобильных
 tabsContainer.Parent = mainContent
 
 local tabsCorner = Instance.new("UICorner")
@@ -393,7 +395,7 @@ tabsList.Size = isMobile and UDim2.new(1, -10, 1, -10) or UDim2.new(1, -10, 1, -
 tabsList.Position = UDim2.new(0, 5, 0, 5)
 tabsList.BackgroundTransparency = 1
 tabsList.BorderSizePixel = 0
-tabsList.ZIndex = 6
+tabsList.ZIndex = 7
 tabsList.Parent = tabsContainer
 
 local tabsListLayout = Instance.new("UIListLayout")
@@ -403,9 +405,10 @@ tabsListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 tabsListLayout.FillDirection = isMobile and Enum.FillDirection.Horizontal or Enum.FillDirection.Vertical
 tabsListLayout.Parent = tabsList
 
+-- Контейнер для функций (содержимого)
 local functionsContainer = Instance.new("Frame")
-functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -70) or UDim2.new(0.8, -5, 1, 0) -- Увеличил отступ
-functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 65) or UDim2.new(0.2, 5, 0, 0) -- Увеличил отступ
+functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -80) or UDim2.new(0.8, -5, 1, 0)
+functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 75) or UDim2.new(0.2, 5, 0, 0)
 functionsContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 functionsContainer.BackgroundTransparency = 1 -- Начальная прозрачность 1
 functionsContainer.BorderSizePixel = 0
@@ -421,23 +424,23 @@ local openButton
 if isMobile then
     openButton = Instance.new("TextButton")
     openButton.Name = "OpenButton"
-    openButton.Size = UDim2.new(0, 70, 0, 70) -- Увеличил размер
-    openButton.Position = UDim2.new(0, 25, 1, -100) -- Изменил позицию
+    openButton.Size = UDim2.new(0, 75, 0, 75)
+    openButton.Position = UDim2.new(0, 25, 1, -100)
     openButton.AnchorPoint = Vector2.new(0, 1)
     openButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     openButton.BackgroundTransparency = 0.1
     openButton.BorderSizePixel = 0
     openButton.Text = "☰"
     openButton.TextColor3 = Color3.fromRGB(240, 240, 240)
-    openButton.TextSize = 32 -- Увеличил размер текста
+    openButton.TextSize = 34
     openButton.Font = Enum.Font.GothamBold
-    openButton.Visible = true -- Всегда видима когда меню закрыто
+    openButton.Visible = false -- Сначала скрыта
     openButton.ZIndex = 1000
     openButton.AutoButtonColor = true
     openButton.Parent = screenGui
 
     local openButtonCorner = Instance.new("UICorner")
-    openButtonCorner.CornerRadius = UDim.new(0, 16) -- Увеличил радиус
+    openButtonCorner.CornerRadius = UDim.new(0, 16)
     openButtonCorner.Parent = openButton
 
     local openButtonStroke = Instance.new("UIStroke")
@@ -451,7 +454,7 @@ local toggleElements = {}
 
 local function createModernToggle(parent, text, state, callback)
     local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = UDim2.new(1, -12, 0, isMobile and 60 or 50) -- Увеличил высоту для мобильных
+    toggleFrame.Size = UDim2.new(1, -12, 0, isMobile and 65 or 50)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.ZIndex = 10
     toggleFrame.Parent = parent
@@ -482,7 +485,7 @@ local function createModernToggle(parent, text, state, callback)
     textLabel.BackgroundTransparency = 1
     textLabel.Text = text
     textLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-    textLabel.TextSize = isMobile and 16 or 14 -- Увеличил размер текста для мобильных
+    textLabel.TextSize = isMobile and 18 or 14
     textLabel.Font = Enum.Font.GothamMedium
     textLabel.TextXAlignment = Enum.TextXAlignment.Left
     textLabel.ZIndex = 12
@@ -490,7 +493,7 @@ local function createModernToggle(parent, text, state, callback)
     
     local toggleSwitch = Instance.new("Frame")
     toggleSwitch.Name = "ToggleSwitch"
-    toggleSwitch.Size = UDim2.new(0, isMobile and 58 or 48, 0, isMobile and 28 or 24) -- Увеличил размер для мобильных
+    toggleSwitch.Size = UDim2.new(0, isMobile and 65 or 48, 0, isMobile and 32 or 24)
     toggleSwitch.Position = UDim2.new(1, -10, 0.5, 0)
     toggleSwitch.AnchorPoint = Vector2.new(1, 0.5)
     toggleSwitch.BackgroundColor3 = state and Color3.fromRGB(40, 100, 40) or Color3.fromRGB(45, 45, 45)
@@ -510,7 +513,7 @@ local function createModernToggle(parent, text, state, callback)
     
     local switchHandle = Instance.new("Frame")
     switchHandle.Name = "Handle"
-    switchHandle.Size = UDim2.new(0, isMobile and 22 or 18, 0, isMobile and 22 or 18) -- Увеличил размер для мобильных
+    switchHandle.Size = UDim2.new(0, isMobile and 26 or 18, 0, isMobile and 26 or 18)
     switchHandle.Position = state and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0)
     switchHandle.AnchorPoint = Vector2.new(state and 1 or 0, 0.5)
     switchHandle.BackgroundColor3 = Color3.fromRGB(250, 250, 250)
@@ -601,13 +604,13 @@ end
 
 local function createModernButton(parent, text, callback)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, -12, 0, isMobile and 60 or 50) -- Увеличил высоту для мобильных
+    button.Size = UDim2.new(1, -12, 0, isMobile and 65 or 50)
     button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     button.BackgroundTransparency = 0
     button.BorderSizePixel = 0
     button.Text = text
     button.TextColor3 = Color3.fromRGB(240, 240, 240)
-    button.TextSize = isMobile and 16 or 14 -- Увеличил размер текста для мобильных
+    button.TextSize = isMobile and 18 or 14
     button.Font = Enum.Font.GothamMedium
     button.AutoButtonColor = true
     button.ZIndex = 10
@@ -653,16 +656,16 @@ end
 local function createTabButton(tabName)
     local tabButton = Instance.new("TextButton")
     tabButton.Name = tabName .. "Tab"
-    tabButton.Size = isMobile and UDim2.new(0, 120, 0, 52) or UDim2.new(1, 0, 0, 44) -- Увеличил размер для мобильных
+    tabButton.Size = isMobile and UDim2.new(0, 130, 0, 58) or UDim2.new(1, 0, 0, 44)
     tabButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     tabButton.BackgroundTransparency = 1 -- Начальная прозрачность 1
     tabButton.BorderSizePixel = 0
     tabButton.Text = tabName:upper()
     tabButton.TextColor3 = Color3.fromRGB(180, 180, 180)
-    tabButton.TextSize = isMobile and 14 or 13 -- Увеличил размер текста
+    tabButton.TextSize = isMobile and 16 or 13
     tabButton.Font = Enum.Font.GothamMedium
     tabButton.TextTransparency = 1
-    tabButton.ZIndex = 7
+    tabButton.ZIndex = 8 -- Увеличил ZIndex для вкладок
     tabButton.AutoButtonColor = false
     tabButton.Parent = tabsList
     
@@ -674,7 +677,7 @@ local function createTabButton(tabName)
     tabStroke.Color = Color3.fromRGB(50, 50, 50)
     tabStroke.Thickness = 2
     tabStroke.Transparency = 1
-    tabStroke.ZIndex = 7
+    tabStroke.ZIndex = 8
     tabStroke.Parent = tabButton
     
     return tabButton
@@ -712,7 +715,7 @@ local function createGamesContent()
     scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
     scrollingFrame.BackgroundTransparency = 1
     scrollingFrame.BorderSizePixel = 0
-    scrollingFrame.ScrollBarThickness = isMobile and 10 or 8 -- Увеличил толщину для мобильных
+    scrollingFrame.ScrollBarThickness = isMobile and 12 or 8
     scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(40, 40, 40)
     scrollingFrame.ScrollBarImageTransparency = 0.5
     scrollingFrame.ZIndex = 9
@@ -822,12 +825,12 @@ local function createGamesContent()
         sectionFrame.Parent = gamesContainer
         
         local sectionTitle = Instance.new("TextLabel")
-        sectionTitle.Size = UDim2.new(1, 0, 0, isMobile and 50 or 42) -- Увеличил высоту для мобильных
+        sectionTitle.Size = UDim2.new(1, 0, 0, isMobile and 55 or 42)
         sectionTitle.Position = UDim2.new(0, 0, 0, 1)
         sectionTitle.BackgroundTransparency = 1
         sectionTitle.Text = section.title
         sectionTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
-        sectionTitle.TextSize = isMobile and 18 or 16 -- Увеличил размер текста
+        sectionTitle.TextSize = isMobile and 20 or 16
         sectionTitle.Font = Enum.Font.GothamBold
         sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
         sectionTitle.ZIndex = 12
@@ -841,7 +844,7 @@ local function createGamesContent()
         
         local itemsContainer = Instance.new("Frame")
         itemsContainer.Size = UDim2.new(1, 0, 0, 0)
-        itemsContainer.Position = UDim2.new(0, 0, 0, isMobile and 55 or 47) -- Увеличил отступ
+        itemsContainer.Position = UDim2.new(0, 0, 0, isMobile and 60 or 47)
         itemsContainer.BackgroundTransparency = 1
         itemsContainer.ZIndex = 12
         itemsContainer.Parent = sectionFrame
@@ -873,9 +876,9 @@ local function createGamesContent()
             end
         end
         
-        local totalItemHeight = itemCount * (isMobile and 60 or 50) + (itemCount - 1) * 12
+        local totalItemHeight = itemCount * (isMobile and 65 or 50) + (itemCount - 1) * 12
         itemsContainer.Size = UDim2.new(1, 0, 0, totalItemHeight)
-        sectionFrame.Size = UDim2.new(1, 0, 0, (isMobile and 55 or 47) + totalItemHeight)
+        sectionFrame.Size = UDim2.new(1, 0, 0, (isMobile and 60 or 47) + totalItemHeight)
         
         createdSections[section.title] = true
     end
@@ -954,13 +957,14 @@ local function showMenu()
     
     blockGameControls()
     
+    -- Сначала делаем всё видимым (но прозрачным)
     mainContainer.Visible = true
     background.Visible = true
     if isMobile and openButton then
         openButton.Visible = false
     end
     
-    -- Анимация появления
+    -- Анимация появления с правильными ZIndex
     local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     
     TweenService:Create(mainContainer, tweenInfo, {
@@ -1010,7 +1014,7 @@ local function showMenu()
         BackgroundTransparency = 0
     }):Play()
     
-    -- Показываем кнопки вкладок
+    -- Показываем кнопки вкладок с анимацией
     for _, tabButton in pairs(tabButtons) do
         TweenService:Create(tabButton, tweenInfo, {
             BackgroundTransparency = 0,
@@ -1025,6 +1029,7 @@ local function showMenu()
         end
     end
     
+    -- Создаем контент
     showTabContent("Games")
 end
 
@@ -1099,8 +1104,11 @@ local function hideMenu()
     -- Ждем завершения анимации
     task.wait(0.35)
     
+    -- Только теперь скрываем элементы
     mainContainer.Visible = false
     background.Visible = false
+    
+    -- Показываем кнопку OPEN на мобильных
     if isMobile and openButton then
         openButton.Visible = true
     end
