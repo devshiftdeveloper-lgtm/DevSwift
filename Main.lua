@@ -201,7 +201,6 @@ local function KillEnemy(enemyName)
     end
 end
 
--- ============ KILLAURA ============
 MainModule.Killaura = {
     Enabled = false,
     TeleportAnimations = {
@@ -219,12 +218,12 @@ MainModule.Killaura = {
     TargetAnimationsSet = {},
     
     BehindDistance = 2,
-    FrontDistance = 19,
+    FrontDistance = 16,
     SpeedThreshold = 18,
     
-    MovementSpeed = 120,
-    RotationSpeed = 30,
-    Smoothness = 0.95,
+    MovementSpeed = 300,
+    RotationSpeed = 60,
+    Smoothness = 0.99,
     JumpSyncSmoothness = 0.98,
     
     MaxVelocity = 350,
@@ -283,7 +282,7 @@ local function findClosestPlayer()
     
     local myPos = rootPart.Position
     
-    local hiderCharacter = GetHider()
+    local hiderCharacter = MainModule.GetHider()
     if hiderCharacter then
         local targetRoot = hiderCharacter:FindFirstChild("HumanoidRootPart")
         local humanoid = hiderCharacter:FindFirstChildOfClass("Humanoid")
@@ -612,7 +611,8 @@ local function ultraFastMovement(localRoot, targetPos, targetLook, deltaTime, is
     if distance > 0.01 then
         local targetSpeed = math.min(config.MovementSpeed, distance * 100)
         
-        config.CurrentVelocity = direction.Unit * targetSpeed
+        local smoothFactor = config.Smoothness
+        config.CurrentVelocity = config.CurrentVelocity:Lerp(direction.Unit * targetSpeed, smoothFactor)
         
         local moveStep = config.CurrentVelocity * deltaTime
         
@@ -815,15 +815,12 @@ function MainModule.ToggleKillaura(enabled)
     
     if enabled then
         if not findClosestPlayer() then return end
-    end
-    
-    config.Enabled = enabled
-
-    if enabled then
         MainModule.ShowNotification("Killaura", "Killaura Enabled", 3)
     else
         MainModule.ShowNotification("Killaura", "Killaura Disabled", 3)
     end
+    
+    config.Enabled = enabled
     
     for _, conn in pairs(config.Connections) do
         if conn then conn:Disconnect() end
@@ -1002,6 +999,201 @@ MainModule.ESP = {
     UpdateRate = 0.1
 }
 
+-- Новая функция для очистки ESP данных конкретного игрока
+function MainModule.ClearPlayerESP(player)
+    if not player then return end
+    local espData = MainModule.ESP.Players[player]
+    if espData then
+        if espData.Highlight then
+            espData.Highlight.Adornee = nil
+            SafeDestroy(espData.Highlight)
+        end
+        if espData.Billboard then
+            SafeDestroy(espData.Billboard)
+        end
+        if espData.CharAddedConn then
+            espData.CharAddedConn:Disconnect()
+            espData.CharAddedConn = nil
+        end
+        if espData.DiedConn then
+            espData.DiedConn:Disconnect()
+            espData.DiedConn = nil
+        end
+        MainModule.ESP.Players[player] = nil
+    end
+end
+
+function MainModule.UpdatePlayerESP(player)
+    if not player or player == LocalPlayer or not MainModule.Misc.ESPEnabled then return end
+    
+    local character = player.Character
+    if not character then 
+        -- Если персонажа нет, очищаем ESP для этого игрока
+        MainModule.ClearPlayerESP(player)
+        return 
+    end
+    
+    local humanoid = GetHumanoid(character)
+    local rootPart = GetRootPart(character)
+    
+    -- Проверяем, жив ли игрок
+    if humanoid and rootPart and humanoid.Health > 0 then
+        local localCharacter = GetCharacter()
+        local localRoot = localCharacter and GetRootPart(localCharacter)
+        local espData = MainModule.ESP.Players[player]
+        
+        -- Если ESP данных нет, создаем их
+        if not espData then
+            espData = {
+                Player = player,
+                Highlight = nil,
+                Billboard = nil,
+                Label = nil,
+                CharAddedConn = nil,
+                DiedConn = nil
+            }
+            MainModule.ESP.Players[player] = espData
+            
+            -- Подписываемся на событие смерти персонажа
+            espData.DiedConn = humanoid.Died:Connect(function()
+                -- При смерти очищаем ESP
+                if espData.Highlight then
+                    espData.Highlight.Adornee = nil
+                    espData.Highlight.Enabled = false
+                end
+                if espData.Billboard then
+                    espData.Billboard.Enabled = false
+                end
+            end)
+        end
+        
+        -- Обновляем Highlight
+        if not espData.Highlight then
+            espData.Highlight = Instance.new("Highlight")
+            espData.Highlight.Name = player.Name .. "_ESP"
+            espData.Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            espData.Highlight.Enabled = MainModule.Misc.ESPHighlight
+            espData.Highlight.Parent = MainModule.ESP.Folder
+        end
+        
+        -- Устанавливаем Adornee только если он изменился
+        if espData.Highlight.Adornee ~= character then
+            espData.Highlight.Adornee = character
+        end
+        
+        -- Устанавливаем цвет в зависимости от типа игрока
+        if IsHider(player) and MainModule.Misc.ESPHiders then
+            espData.Highlight.FillColor = Color3.fromRGB(0, 255, 0)
+            espData.Highlight.OutlineColor = Color3.fromRGB(0, 200, 0)
+            espData.Highlight.Enabled = true
+        elseif IsSeeker(player) and MainModule.Misc.ESPSeekers then
+            espData.Highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            espData.Highlight.OutlineColor = Color3.fromRGB(200, 0, 0)
+            espData.Highlight.Enabled = true
+        elseif MainModule.Misc.ESPPlayers then
+            espData.Highlight.FillColor = Color3.fromRGB(0, 120, 255)
+            espData.Highlight.OutlineColor = Color3.fromRGB(0, 100, 200)
+            espData.Highlight.Enabled = true
+        else
+            espData.Highlight.Enabled = false
+        end
+        
+        espData.Highlight.FillTransparency = MainModule.Misc.ESPFillTransparency
+        espData.Highlight.OutlineTransparency = MainModule.Misc.ESPOutlineTransparency
+        
+        -- Обновляем текст
+        if MainModule.Misc.ESPNames then
+            if not espData.Billboard then
+                espData.Billboard = Instance.new("BillboardGui")
+                espData.Billboard.Name = player.Name .. "_Text"
+                espData.Billboard.AlwaysOnTop = true
+                espData.Billboard.Size = UDim2.new(0, 200, 0, 50)
+                espData.Billboard.StudsOffset = Vector3.new(0, 3, 0)
+                espData.Billboard.Parent = MainModule.ESP.Folder
+                
+                espData.Label = Instance.new("TextLabel")
+                espData.Label.Size = UDim2.new(1, 0, 1, 0)
+                espData.Label.BackgroundTransparency = 1
+                espData.Label.TextColor3 = espData.Highlight.FillColor
+                espData.Label.TextSize = MainModule.Misc.ESPTextSize
+                espData.Label.Font = Enum.Font.GothamBold
+                espData.Label.TextStrokeColor3 = Color3.new(0, 0, 0)
+                espData.Label.TextStrokeTransparency = 0.5
+                espData.Label.Parent = espData.Billboard
+            end
+            
+            -- Устанавливаем Adornee для Billboard
+            if espData.Billboard.Adornee ~= rootPart then
+                espData.Billboard.Adornee = rootPart
+            end
+            
+            espData.Billboard.Enabled = true
+            local distanceText = ""
+            if MainModule.Misc.ESPDistance and localRoot then
+                local distance = math.floor(GetDistance(rootPart.Position, localRoot.Position))
+                distanceText = string.format(" [%dm]", distance)
+            end
+            
+            local healthText = string.format("HP: %d/%d", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
+            local nameText = player.DisplayName or player.Name
+            espData.Label.Text = string.format("%s\n%s%s", nameText, healthText, distanceText)
+            espData.Label.TextColor3 = espData.Highlight.FillColor
+            espData.Label.TextSize = MainModule.Misc.ESPTextSize
+        elseif espData.Billboard then
+            espData.Billboard.Enabled = false
+        end
+    else
+        -- Если игрок мертв, отключаем ESP (но не удаляем данные)
+        local espData = MainModule.ESP.Players[player]
+        if espData then
+            if espData.Highlight then
+                espData.Highlight.Enabled = false
+                espData.Highlight.Adornee = nil
+            end
+            if espData.Billboard then
+                espData.Billboard.Enabled = false
+                espData.Billboard.Adornee = nil
+            end
+        end
+    end
+end
+
+function MainModule.SetupPlayerESP(player)
+    if player == LocalPlayer then return end
+    
+    -- Очищаем старые данные, если они есть
+    MainModule.ClearPlayerESP(player)
+    
+    -- Создаем ESP для текущего персонажа
+    if player.Character then
+        MainModule.UpdatePlayerESP(player)
+    end
+    
+    -- Подписываемся на смену персонажа
+    local charAddedConn = player.CharacterAdded:Connect(function(character)
+        -- Ждем появления персонажа и его частей
+        local maxWait = 10
+        local waited = 0
+        
+        while waited < maxWait do
+            if character and character:FindFirstChild("Humanoid") and character:FindFirstChild("HumanoidRootPart") then
+                break
+            end
+            task.wait(0.1)
+            waited = waited + 0.1
+        end
+        
+        -- Обновляем ESP после перерождения
+        MainModule.UpdatePlayerESP(player)
+    end)
+    
+    -- Сохраняем соединение для последующей очистки
+    local espData = MainModule.ESP.Players[player]
+    if espData then
+        espData.CharAddedConn = charAddedConn
+    end
+end
+
 function MainModule.ToggleESP(enabled)
     MainModule.Misc.ESPEnabled = enabled
 
@@ -1011,131 +1203,51 @@ function MainModule.ToggleESP(enabled)
         MainModule.ShowNotification("ESP", "ESP Disabled", 3)
     end
     
+    -- Останавливаем существующие соединения
     if MainModule.ESP.MainConnection then
         MainModule.ESP.MainConnection:Disconnect()
         MainModule.ESP.MainConnection = nil
     end
+    
+    -- Очищаем все ESP
     MainModule.ClearESP()
+    
     if enabled then
+        -- Создаем папку для ESP
         MainModule.ESP.Folder = Instance.new("Folder")
         MainModule.ESP.Folder.Name = "CreonXESP"
         MainModule.ESP.Folder.Parent = game:GetService("CoreGui")
         
-        local function UpdatePlayerESP(player)
-            if not player or player == LocalPlayer then return end
-            local character = player.Character
-            if not character then return end
-            local humanoid = GetHumanoid(character)
-            local rootPart = GetRootPart(character)
-            if not (humanoid and rootPart and humanoid.Health > 0) then return end
-            
-            local localCharacter = GetCharacter()
-            local localRoot = localCharacter and GetRootPart(localCharacter)
-            local espData = MainModule.ESP.Players[player]
-            
-            if not espData then
-                espData = {
-                    Player = player,
-                    Highlight = nil,
-                    Billboard = nil,
-                    Label = nil
-                }
-                MainModule.ESP.Players[player] = espData
-            end
-            
-            if not espData.Highlight then
-                espData.Highlight = Instance.new("Highlight")
-                espData.Highlight.Name = player.Name .. "_ESP"
-                espData.Highlight.Adornee = character
-                espData.Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                espData.Highlight.Enabled = MainModule.Misc.ESPHighlight
-                espData.Highlight.Parent = MainModule.ESP.Folder
-            end
-            
-            if IsHider(player) and MainModule.Misc.ESPHiders then
-                espData.Highlight.FillColor = Color3.fromRGB(0, 255, 0)
-                espData.Highlight.OutlineColor = Color3.fromRGB(0, 200, 0)
-            elseif IsSeeker(player) and MainModule.Misc.ESPSeekers then
-                espData.Highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                espData.Highlight.OutlineColor = Color3.fromRGB(200, 0, 0)
-            elseif MainModule.Misc.ESPPlayers then
-                espData.Highlight.FillColor = Color3.fromRGB(0, 120, 255)
-                espData.Highlight.OutlineColor = Color3.fromRGB(0, 100, 200)
-            else
-                espData.Highlight.Enabled = false
-            end
-            
-            espData.Highlight.FillTransparency = MainModule.Misc.ESPFillTransparency
-            espData.Highlight.OutlineTransparency = MainModule.Misc.ESPOutlineTransparency
-            
-            if MainModule.Misc.ESPNames then
-                if not espData.Billboard then
-                    espData.Billboard = Instance.new("BillboardGui")
-                    espData.Billboard.Name = player.Name .. "_Text"
-                    espData.Billboard.Adornee = rootPart
-                    espData.Billboard.AlwaysOnTop = true
-                    espData.Billboard.Size = UDim2.new(0, 200, 0, 50)
-                    espData.Billboard.StudsOffset = Vector3.new(0, 3, 0)
-                    espData.Billboard.Parent = MainModule.ESP.Folder
-                    
-                    espData.Label = Instance.new("TextLabel")
-                    espData.Label.Size = UDim2.new(1, 0, 1, 0)
-                    espData.Label.BackgroundTransparency = 1
-                    espData.Label.TextColor3 = espData.Highlight.FillColor
-                    espData.Label.TextSize = MainModule.Misc.ESPTextSize
-                    espData.Label.Font = Enum.Font.GothamBold
-                    espData.Label.TextStrokeColor3 = Color3.new(0, 0, 0)
-                    espData.Label.TextStrokeTransparency = 0.5
-                    espData.Label.Parent = espData.Billboard
-                end
-                
-                espData.Billboard.Enabled = true
-                local distanceText = ""
-                if MainModule.Misc.ESPDistance and localRoot then
-                    local distance = math.floor(GetDistance(rootPart.Position, localRoot.Position))
-                    distanceText = string.format(" [%dm]", distance)
-                end
-                
-                local healthText = string.format("HP: %d/%d", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
-                local nameText = player.DisplayName or player.Name
-                espData.Label.Text = string.format("%s\n%s%s", nameText, healthText, distanceText)
-                espData.Label.TextColor3 = espData.Highlight.FillColor
-                espData.Label.TextSize = MainModule.Misc.ESPTextSize
-            elseif espData.Billboard then
-                espData.Billboard.Enabled = false
-            end
-        end
-        
+        -- Настраиваем ESP для всех существующих игроков
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer then
-                UpdatePlayerESP(player)
-                player.CharacterAdded:Connect(function()
-                    task.wait(0.5)
-                    UpdatePlayerESP(player)
-                end)
+                MainModule.SetupPlayerESP(player)
             end
         end
         
+        -- Подписываемся на добавление новых игроков
         MainModule.ESP.Connections.PlayerAdded = Players.PlayerAdded:Connect(function(player)
-            if MainModule.Misc.ESPEnabled and player ~= LocalPlayer then
-                task.wait(0.5)
-                UpdatePlayerESP(player)
+            if MainModule.Misc.ESPEnabled then
+                task.wait(1) -- Даем время на загрузку
+                MainModule.SetupPlayerESP(player)
             end
         end)
         
+        -- Подписываемся на удаление игроков
+        MainModule.ESP.Connections.PlayerRemoving = Players.PlayerRemoving:Connect(function(player)
+            MainModule.ClearPlayerESP(player)
+        end)
+        
+        -- Основной цикл обновления ESP
         MainModule.ESP.MainConnection = RunService.RenderStepped:Connect(function()
             if not MainModule.Misc.ESPEnabled then return end
+            
             for player, espData in pairs(MainModule.ESP.Players) do
-                if player and player.Parent and player.Character then
-                    UpdatePlayerESP(player)
+                if player and player.Parent then
+                    MainModule.UpdatePlayerESP(player)
                 else
-                    if espData.Highlight then
-                        SafeDestroy(espData.Highlight)
-                    end
-                    if espData.Billboard then
-                        SafeDestroy(espData.Billboard)
-                    end
-                    MainModule.ESP.Players[player] = nil
+                    -- Если игрок вышел из игры, очищаем его ESP
+                    MainModule.ClearPlayerESP(player)
                 end
             end
         end)
@@ -1143,13 +1255,8 @@ function MainModule.ToggleESP(enabled)
 end
 
 function MainModule.ClearESP()
-    for player, espData in pairs(MainModule.ESP.Players) do
-        if espData.Highlight then
-            SafeDestroy(espData.Highlight)
-        end
-        if espData.Billboard then
-            SafeDestroy(espData.Billboard)
-        end
+    for player, _ in pairs(MainModule.ESP.Players) do
+        MainModule.ClearPlayerESP(player)
     end
     MainModule.ESP.Players = {}
     
@@ -1165,11 +1272,6 @@ function MainModule.ClearESP()
     if MainModule.ESP.Folder then
         SafeDestroy(MainModule.ESP.Folder)
         MainModule.ESP.Folder = nil
-    end
-    
-    if MainModule.ESP.MainConnection then
-        MainModule.ESP.MainConnection:Disconnect()
-        MainModule.ESP.MainConnection = nil
     end
 end
 
