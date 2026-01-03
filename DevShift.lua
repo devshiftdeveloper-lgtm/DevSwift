@@ -338,7 +338,6 @@ titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.ZIndex = 5
 titleLabel.Parent = topBar
 
--- Кнопка закрытия для мобильных
 local closeButton
 if isMobile then
     closeButton = Instance.new("TextButton")
@@ -406,7 +405,6 @@ tabsListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 tabsListLayout.FillDirection = isMobile and Enum.FillDirection.Horizontal or Enum.FillDirection.Vertical
 tabsListLayout.Parent = tabsList
 
--- Контейнер для функций
 local functionsContainer = Instance.new("Frame")
 functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -60) or UDim2.new(0.8, -4, 1, 0)
 functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 55) or UDim2.new(0.2, 4, 0, 0)
@@ -451,14 +449,14 @@ if isMobile then
     local isDraggingOpenButton = false
     local dragStartOpenButton
     local startPosOpenButton
-    local hasDragged = false
+    local wasDragged = false
     
     openButton.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isDraggingOpenButton = true
             dragStartOpenButton = input.Position
             startPosOpenButton = openButton.Position
-            hasDragged = false
+            wasDragged = false
             openButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
         end
     end)
@@ -466,15 +464,19 @@ if isMobile then
     openButton.InputChanged:Connect(function(input)
         if isDraggingOpenButton and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStartOpenButton
-            if math.abs(delta.X) > 3 or math.abs(delta.Y) > 3 then
-                hasDragged = true
+            
+            if math.abs(delta.X) > 10 or math.abs(delta.Y) > 10 then
+                wasDragged = true
             end
-            openButton.Position = UDim2.new(
-                startPosOpenButton.X.Scale, 
-                startPosOpenButton.X.Offset + delta.X,
-                startPosOpenButton.Y.Scale, 
-                startPosOpenButton.Y.Offset + delta.Y
-            )
+            
+            if wasDragged then
+                openButton.Position = UDim2.new(
+                    startPosOpenButton.X.Scale, 
+                    startPosOpenButton.X.Offset + delta.X,
+                    startPosOpenButton.Y.Scale, 
+                    startPosOpenButton.Y.Offset + delta.Y
+                )
+            end
         end
     end)
     
@@ -483,10 +485,9 @@ if isMobile then
             isDraggingOpenButton = false
             openButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
             
-            if not hasDragged then
+            if not wasDragged then
                 showMenu()
             end
-            hasDragged = false
         end
     end)
     
