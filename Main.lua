@@ -283,7 +283,8 @@ local function findClosestPlayer()
     
     local myPos = rootPart.Position
     
-    local hiderCharacter = MainModule.GetHider()
+    -- ИСПРАВЛЕНО: Используем локальную функцию GetHider вместо MainModule.GetHider
+    local hiderCharacter = GetHider()  -- ← ИЗМЕНЕНО ЗДЕСЬ
     if hiderCharacter then
         local targetRoot = hiderCharacter:FindFirstChild("HumanoidRootPart")
         local humanoid = hiderCharacter:FindFirstChildOfClass("Humanoid")
