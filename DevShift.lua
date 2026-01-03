@@ -242,7 +242,6 @@ end
 
 task.spawn(createAimSightGUI)
 
--- Создаем основной GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "DevShiftGUI"
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
@@ -338,7 +337,6 @@ titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.ZIndex = 5
 titleLabel.Parent = topBar
 
--- Кнопка закрытия для мобильных
 local closeButton
 if isMobile then
     closeButton = Instance.new("TextButton")
@@ -407,7 +405,6 @@ tabsListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 tabsListLayout.FillDirection = isMobile and Enum.FillDirection.Horizontal or Enum.FillDirection.Vertical
 tabsListLayout.Parent = tabsList
 
--- Контейнер для функций
 local functionsContainer = Instance.new("Frame")
 functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -60) or UDim2.new(0.8, -4, 1, 0)
 functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 55) or UDim2.new(0.2, 4, 0, 0)
@@ -421,7 +418,6 @@ local functionsCorner = Instance.new("UICorner")
 functionsCorner.CornerRadius = UDim.new(0, 8)
 functionsCorner.Parent = functionsContainer
 
--- Кнопка открытия меню (только для мобильных)
 local openButton
 if isMobile then
     openButton = Instance.new("TextButton")
@@ -507,7 +503,7 @@ if isMobile and openButton then
             local touchDuration = currentTime - openButtonTouchStartTime
             
             -- Если тач длится больше 0.2 секунды - начинаем перемещение
-            if touchDuration > 0.2 and not openButtonIsDragging then
+            if touchDuration > 1 and not openButtonIsDragging then
                 openButtonIsDragging = true
             end
             
@@ -529,7 +525,7 @@ if isMobile and openButton then
             openButtonTouchDuration = currentTime - openButtonTouchStartTime
             
             -- Если тач был коротким (менее 0.2 секунды) и мы не перемещали кнопку - открываем меню
-            if openButtonTouchDuration < 0.2 and not openButtonIsDragging then
+            if openButtonTouchDuration < 1 and not openButtonIsDragging then
                 showMenu()
             end
             
