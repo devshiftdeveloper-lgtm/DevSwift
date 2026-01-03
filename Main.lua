@@ -269,6 +269,19 @@ for _, animId in pairs(MainModule.Killaura.TeleportAnimations) do
     MainModule.Killaura.TargetAnimationsSet[animId] = true
 end
 
+local function GetHider()
+    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+        local LocalPlayer = game:GetService("Players").LocalPlayer
+        if player ~= LocalPlayer and player.Character then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 and MainModule.IsHider(player) then
+                return player.Character
+            end
+        end
+    end
+    return nil
+end
+
 local function findClosestPlayer()
     local players = game:GetService("Players")
     local localPlayer = players.LocalPlayer
