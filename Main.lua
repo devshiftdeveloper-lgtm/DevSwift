@@ -1173,6 +1173,7 @@ local LocalPlayer = Players.LocalPlayer
 Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then
         MainModule.ToggleAutoDodge(false)
+        MainModule.SnowNotification("AutoDodge", "AutoDodge disabled - local player left", 2)
     elseif MainModule.AutoDodge.TrackedPlayers[player.Name] then
         for _, conn in pairs(MainModule.AutoDodge.TrackedPlayers[player.Name]) do
             pcall(function() conn:Disconnect() end)
