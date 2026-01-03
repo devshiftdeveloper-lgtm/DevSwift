@@ -472,6 +472,7 @@ function MainModule.ToggleSpikesKill(enabled)
     MainModule.ShowNotification("Spikes Kill", "Enabled", 2)
 end
 
+
 MainModule.AutoGonggi = {
     Enabled = false,
     CheckInterval = 0.05,
@@ -543,9 +544,15 @@ local function processGonggiQTE()
                     local btn = mobileButtons:FindFirstChild(btnName)
                     
                     if btn then
-                        pcall(function()
+                        if getconnections then
+                            for _, conn in pairs(getconnections(btn.MouseButton1Click)) do
+                                conn:Fire()
+                            end
+                        elseif firesignal then
+                            firesignal(btn.MouseButton1Click)
+                        else
                             btn:Fire("MouseButton1Click")
-                        end)
+                        end
                         
                         task.wait(0.1)
                     end
@@ -578,15 +585,46 @@ local function processGonggiStones()
     for _, stoneName in ipairs(stoneNames) do
         local stone = pentathlonMap:FindFirstChild(stoneName, true)
         if stone and stone:IsA("BasePart") then
-            pcall(function()
-                if not stone.Anchored then
-                    stone.Anchored = true
-                end
-                
-                if stone.CanCollide then
-                    stone.CanCollide = false
-                end
-            end)
+            if not stone.Anchored then
+                stone.Anchored = true
+            end
+            
+            if stone.CanCollide then
+                stone.CanCollide = false
+            end
+            
+            if not stone:FindFirstChild("AutoHighlight") then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "AutoHighlight"
+                highlight.FillColor = Color3.new(0, 1, 0)
+                highlight.OutlineColor = Color3.new(0, 0.8, 0)
+                highlight.FillTransparency = 0.7
+                highlight.Parent = stone
+            end
+        end
+    end
+    
+    local collectionService = game:GetService("CollectionService")
+    local stones = collectionService:GetTagged("GonggiStone")
+    
+    for _, stone in ipairs(stones) do
+        if stone:IsA("BasePart") then
+            if not stone.Anchored then
+                stone.Anchored = true
+            end
+            
+            if stone.CanCollide then
+                stone.CanCollide = false
+            end
+            
+            if not stone:FindFirstChild("AutoHighlight") then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "AutoHighlight"
+                highlight.FillColor = Color3.new(0, 1, 0)
+                highlight.OutlineColor = Color3.new(0, 0.8, 0)
+                highlight.FillTransparency = 0.7
+                highlight.Parent = stone
+            end
         end
     end
     
@@ -594,10 +632,16 @@ local function processGonggiStones()
 end
 
 function MainModule.ToggleAutoGonggi(enabled)
-    if enabled and workspace:FindFirstChild("PentathlonMap") == nil then
-        MainModule.ShowNotification("Auto Gonggi", "Pentathlon not active", 2)
-        MainModule.AutoGonggi.Enabled = false
-        return
+    if not IsGameActive("Pentathlon") then
+        MainModule.ShowNotification("AutoGonggi", "Pentathlon game not active", 2)
+        if MainModule.AutoGonggi.Enabled then
+            MainModule.ToggleAutoGonggi(false)
+        end
+        return false
+    end
+    
+    if MainModule.AutoGonggi.Enabled == enabled then
+        return MainModule.AutoGonggi.Enabled
     end
     
     if MainModule.AutoGonggi.QTEThread then
@@ -619,11 +663,20 @@ function MainModule.ToggleAutoGonggi(enabled)
     if enabled then
         MainModule.AutoGonggi.QTEThread = task.spawn(function()
             while MainModule.AutoGonggi.Enabled do
-                if workspace:FindFirstChild("PentathlonMap") == nil then
+                if not IsGameActive("Pentathlon") then
                     MainModule.AutoGonggi.Enabled = false
-                    MainModule.ShowNotification("Auto Gonggi", "Pentathlon ended - disabled", 2)
-                    break
+                    if MainModule.AutoGonggi.QTEThread then
+                        task.cancel(MainModule.AutoGonggi.QTEThread)
+                        MainModule.AutoGonggi.QTEThread = nil
+                    end
+                    if MainModule.AutoGonggi.StoneThread then
+                        task.cancel(MainModule.AutoGonggi.StoneThread)
+                        MainModule.AutoGonggi.StoneThread = nil
+                    end
+                    MainModule.SnowNotification("AutoGonggi", "Pentathlon ended - AutoGonggi disabled", 2)
+                    return
                 end
+                
                 processGonggiQTE()
                 task.wait(MainModule.AutoGonggi.CheckInterval)
             end
@@ -631,21 +684,43 @@ function MainModule.ToggleAutoGonggi(enabled)
         
         MainModule.AutoGonggi.StoneThread = task.spawn(function()
             while MainModule.AutoGonggi.Enabled do
-                if workspace:FindFirstChild("PentathlonMap") == nil then
+                if not IsGameActive("Pentathlon") then
                     MainModule.AutoGonggi.Enabled = false
-                    break
+                    return
                 end
+                
                 processGonggiStones()
                 task.wait(MainModule.AutoGonggi.StoneCheckInterval)
             end
         end)
-        
-        MainModule.ShowNotification("Auto Gonggi", "Enabled", 2)
+        MainModule.SnowNotification("AutoGonggi", "AutoGonggi: ON", 2)
     else
-        MainModule.ShowNotification("Auto Gonggi", "Disabled", 2)
+        task.spawn(function()
+            local pentathlonMap = workspace:FindFirstChild("PentathlonMap")
+            if pentathlonMap then
+                for _, obj in pairs(pentathlonMap:GetDescendants()) do
+                    if obj:IsA("BasePart") and obj:FindFirstChild("AutoHighlight") then
+                        obj.AutoHighlight:Destroy()
+                    end
+                end
+            end
+            
+            local collectionService = game:GetService("CollectionService")
+            local stones = collectionService:GetTagged("GonggiStone")
+            for _, stone in ipairs(stones) do
+                if stone:IsA("BasePart") and stone:FindFirstChild("AutoHighlight") then
+                    stone.AutoHighlight:Destroy()
+                end
+            end
+        end)
+        MainModule.SnowNotification("AutoGonggi", "AutoGonggi: OFF", 2)
     end
     
     return MainModule.AutoGonggi.Enabled
+end
+
+function MainModule.ForceStopAutoGonggi()
+    MainModule.ToggleAutoGonggi(false)
 end
 
 MainModule.AutoDodge = {
@@ -1033,9 +1108,14 @@ end
 -- ============ УПРАВЛЕНИЕ СИСТЕМОЙ ============
 
 function MainModule.ToggleAutoDodge(enabled)
+    if enabled and not IsGameActive("HideAndSeek") then
+        MainModule.SnowNotification("AutoDodge", "HideAndSeek game not active", 2)
+        MainModule.AutoDodge.Enabled = false
+        return
+    end
+    
     MainModule.AutoDodge.Enabled = false
     
-    -- Очистка всех соединений
     for _, conn in pairs(MainModule.AutoDodge.Connections) do
         if conn then
             pcall(function() conn:Disconnect() end)
@@ -1051,12 +1131,26 @@ function MainModule.ToggleAutoDodge(enabled)
         
         local Players = game:GetService("Players")
         
-        -- Мгновенная инициализация всех игроков
+        local checkGameActiveConnection = RunService.Heartbeat:Connect(function()
+            if not IsGameActive("HideAndSeek") then
+                MainModule.AutoDodge.Enabled = false
+                for _, conn in pairs(MainModule.AutoDodge.Connections) do
+                    if conn then
+                        pcall(function() conn:Disconnect() end)
+                    end
+                end
+                MainModule.AutoDodge.Connections = {}
+                MainModule.AutoDodge.TrackedPlayers = {}
+                MainModule.AutoDodge.LastDodgeTime = 0
+                MainModule.SnowNotification("AutoDodge", "HideAndSeek ended - AutoDodge disabled", 2)
+            end
+        end)
+        table.insert(MainModule.AutoDodge.Connections, checkGameActiveConnection)
+        
         for _, player in pairs(Players:GetPlayers()) do
             setupInstantPlayerTracking(player)
         end
         
-        -- Отслеживание новых игроков
         local playerAddedConn = Players.PlayerAdded:Connect(function(player)
             if MainModule.AutoDodge.Enabled then
                 setupInstantPlayerTracking(player)
@@ -1064,8 +1158,10 @@ function MainModule.ToggleAutoDodge(enabled)
         end)
         table.insert(MainModule.AutoDodge.Connections, playerAddedConn)
         
-        -- Дополнительный мониторинг для максимальной скорости
         setupInstantReactionMonitor()
+        MainModule.SnowNotification("AutoDodge", "AutoDodge: ON", 2)
+    else
+        MainModule.SnowNotification("AutoDodge", "AutoDodge: OFF", 2)
     end
 end
 
