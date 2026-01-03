@@ -255,9 +255,10 @@ local background = Instance.new("Frame")
 background.Name = "Background"
 background.Size = UDim2.new(1, 0, 1, 0)
 background.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-background.BackgroundTransparency = 1 -- Начальная прозрачность 1
+background.BackgroundTransparency = 0.85
 background.BorderSizePixel = 0
 background.ZIndex = 1
+background.Visible = false
 background.Parent = screenGui
 
 local mainContainer = Instance.new("Frame")
@@ -266,9 +267,10 @@ mainContainer.Size = isMobile and UDim2.new(0.95, 0, 0.9, 0) or UDim2.new(0, 780
 mainContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 mainContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
 mainContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-mainContainer.BackgroundTransparency = 1 -- Начальная прозрачность 1
+mainContainer.BackgroundTransparency = 0
 mainContainer.BorderSizePixel = 0
 mainContainer.ZIndex = 2
+mainContainer.Visible = false
 mainContainer.Parent = screenGui
 
 local corner = Instance.new("UICorner")
@@ -278,7 +280,7 @@ corner.Parent = mainContainer
 local mainStroke = Instance.new("UIStroke")
 mainStroke.Color = Color3.fromRGB(35, 35, 35)
 mainStroke.Thickness = 2.5
-mainStroke.Transparency = 1
+mainStroke.Transparency = 0
 mainStroke.LineJoinMode = Enum.LineJoinMode.Round
 mainStroke.ZIndex = 2
 mainStroke.Parent = mainContainer
@@ -286,7 +288,7 @@ mainStroke.Parent = mainContainer
 local accentStroke = Instance.new("UIStroke")
 accentStroke.Color = Color3.fromRGB(80, 80, 80)
 accentStroke.Thickness = 1
-accentStroke.Transparency = 1
+accentStroke.Transparency = 0
 accentStroke.LineJoinMode = Enum.LineJoinMode.Round
 accentStroke.ZIndex = 3
 accentStroke.Parent = mainContainer
@@ -295,7 +297,7 @@ local innerBackground = Instance.new("Frame")
 innerBackground.Size = UDim2.new(1, -8, 1, -8)
 innerBackground.Position = UDim2.new(0, 4, 0, 4)
 innerBackground.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
-innerBackground.BackgroundTransparency = 1 -- Начальная прозрачность 1
+innerBackground.BackgroundTransparency = 0.3
 innerBackground.BorderSizePixel = 0
 innerBackground.ZIndex = 2
 innerBackground.Parent = mainContainer
@@ -314,7 +316,7 @@ contentContainer.Parent = mainContainer
 local topBar = Instance.new("Frame")
 topBar.Size = UDim2.new(1, 0, 0, isMobile and 80 or 66)
 topBar.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-topBar.BackgroundTransparency = 1 -- Начальная прозрачность 1
+topBar.BackgroundTransparency = 0
 topBar.BorderSizePixel = 0
 topBar.ZIndex = 4
 topBar.Parent = contentContainer
@@ -331,28 +333,28 @@ titleLabel.Text = "DEVSHIFT"
 titleLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
 titleLabel.TextSize = isMobile and 32 or 32
 titleLabel.Font = Enum.Font.GothamBlack
-titleLabel.TextTransparency = 1
+titleLabel.TextTransparency = 0
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.ZIndex = 5
 titleLabel.Parent = topBar
 
--- Кнопка закрытия для мобильных (используем букву "X" вместо символа)
+-- Кнопка закрытия для мобильных
 local closeButton
 if isMobile then
     closeButton = Instance.new("TextButton")
     closeButton.Name = "CloseButton"
-    closeButton.Size = UDim2.new(0, 65, 0, 65) -- Больше для мобильных
+    closeButton.Size = UDim2.new(0, 65, 0, 65)
     closeButton.Position = UDim2.new(1, -15, 0.5, 0)
     closeButton.AnchorPoint = Vector2.new(1, 0.5)
     closeButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    closeButton.BackgroundTransparency = 1 -- Начальная прозрачность 1
+    closeButton.BackgroundTransparency = 0
     closeButton.BorderSizePixel = 0
-    closeButton.Text = "X" -- Простая буква X вместо символа
+    closeButton.Text = "X"
     closeButton.TextColor3 = Color3.fromRGB(220, 220, 220)
-    closeButton.TextSize = 32 -- Увеличил размер текста
+    closeButton.TextSize = 32
     closeButton.Font = Enum.Font.GothamBold
-    closeButton.TextTransparency = 1
-    closeButton.ZIndex = 10 -- ВЫСОКИЙ ZIndex
+    closeButton.TextTransparency = 0
+    closeButton.ZIndex = 10
     closeButton.AutoButtonColor = true
     closeButton.Parent = topBar
 
@@ -363,7 +365,7 @@ if isMobile then
     local closeButtonStroke = Instance.new("UIStroke")
     closeButtonStroke.Color = Color3.fromRGB(60, 60, 60)
     closeButtonStroke.Thickness = 2
-    closeButtonStroke.Transparency = 1
+    closeButtonStroke.Transparency = 0
     closeButtonStroke.ZIndex = 10
     closeButtonStroke.Parent = closeButton
 end
@@ -375,14 +377,14 @@ mainContent.BackgroundTransparency = 1
 mainContent.ZIndex = 4
 mainContent.Parent = contentContainer
 
--- Контейнер для вкладок (ГОРИЗОНТАЛЬНЫЙ для мобильных)
+-- Контейнер для вкладок
 local tabsContainer = Instance.new("Frame")
-tabsContainer.Size = isMobile and UDim2.new(1, 0, 0, 70) or UDim2.new(0.2, -5, 1, 0)
+tabsContainer.Size = isMobile and UDim2.new(1, 0, 0, 60) or UDim2.new(0.2, -5, 1, 0)
 tabsContainer.Position = isMobile and UDim2.new(0, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
 tabsContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-tabsContainer.BackgroundTransparency = 1 -- Начальная прозрачность 1
+tabsContainer.BackgroundTransparency = 0
 tabsContainer.BorderSizePixel = 0
-tabsContainer.ZIndex = 6 -- Увеличил ZIndex для мобильных
+tabsContainer.ZIndex = 6
 tabsContainer.Parent = mainContent
 
 local tabsCorner = Instance.new("UICorner")
@@ -405,12 +407,12 @@ tabsListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 tabsListLayout.FillDirection = isMobile and Enum.FillDirection.Horizontal or Enum.FillDirection.Vertical
 tabsListLayout.Parent = tabsList
 
--- Контейнер для функций (содержимого)
+-- Контейнер для функций
 local functionsContainer = Instance.new("Frame")
-functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -80) or UDim2.new(0.8, -5, 1, 0)
-functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 75) or UDim2.new(0.2, 5, 0, 0)
+functionsContainer.Size = isMobile and UDim2.new(1, 0, 1, -70) or UDim2.new(0.8, -5, 1, 0)
+functionsContainer.Position = isMobile and UDim2.new(0, 0, 0, 65) or UDim2.new(0.2, 5, 0, 0)
 functionsContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-functionsContainer.BackgroundTransparency = 1 -- Начальная прозрачность 1
+functionsContainer.BackgroundTransparency = 0
 functionsContainer.BorderSizePixel = 0
 functionsContainer.ZIndex = 5
 functionsContainer.Parent = mainContent
@@ -434,7 +436,7 @@ if isMobile then
     openButton.TextColor3 = Color3.fromRGB(240, 240, 240)
     openButton.TextSize = 34
     openButton.Font = Enum.Font.GothamBold
-    openButton.Visible = false -- Сначала скрыта
+    openButton.Visible = false
     openButton.ZIndex = 1000
     openButton.AutoButtonColor = true
     openButton.Parent = screenGui
@@ -536,22 +538,14 @@ local function createModernToggle(parent, text, state, callback)
             button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
             stroke.Color = Color3.fromRGB(70, 150, 70)
             toggleSwitch.BackgroundColor3 = Color3.fromRGB(40, 100, 40)
-            
-            local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-            TweenService:Create(switchHandle, tweenInfo, {
-                Position = UDim2.new(1, -3, 0.5, 0),
-                AnchorPoint = Vector2.new(1, 0.5)
-            }):Play()
+            switchHandle.Position = UDim2.new(1, -3, 0.5, 0)
+            switchHandle.AnchorPoint = Vector2.new(1, 0.5)
         else
             button.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
             stroke.Color = Color3.fromRGB(60, 60, 60)
             toggleSwitch.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-            
-            local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-            TweenService:Create(switchHandle, tweenInfo, {
-                Position = UDim2.new(0, 3, 0.5, 0),
-                AnchorPoint = Vector2.new(0, 0.5)
-            }):Play()
+            switchHandle.Position = UDim2.new(0, 3, 0.5, 0)
+            switchHandle.AnchorPoint = Vector2.new(0, 0.5)
         end
     end
     
@@ -564,30 +558,6 @@ local function createModernToggle(parent, text, state, callback)
             callback(state)
         end
     end)
-    
-    if not isMobile then
-        button.MouseEnter:Connect(function()
-            if state then
-                TweenService:Create(button, TweenInfo.new(0.2), {
-                    BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                }):Play()
-                TweenService:Create(stroke, TweenInfo.new(0.2), {
-                    Color = Color3.fromRGB(80, 170, 80)
-                }):Play()
-            else
-                TweenService:Create(button, TweenInfo.new(0.2), {
-                    BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-                }):Play()
-                TweenService:Create(stroke, TweenInfo.new(0.2), {
-                    Color = Color3.fromRGB(80, 80, 80)
-                }):Play()
-            end
-        end)
-        
-        button.MouseLeave:Connect(function()
-            updateVisual()
-        end)
-    end
     
     table.insert(toggleElements, {
         frame = toggleFrame,
@@ -626,26 +596,6 @@ local function createModernButton(parent, text, callback)
     stroke.ZIndex = 10
     stroke.Parent = button
     
-    if not isMobile then
-        button.MouseEnter:Connect(function()
-            TweenService:Create(button, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-            }):Play()
-            TweenService:Create(stroke, TweenInfo.new(0.2), {
-                Color = Color3.fromRGB(100, 100, 100)
-            }):Play()
-        end)
-        
-        button.MouseLeave:Connect(function()
-            TweenService:Create(button, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-            TweenService:Create(stroke, TweenInfo.new(0.2), {
-                Color = Color3.fromRGB(70, 70, 70)
-            }):Play()
-        end)
-    end
-    
     if callback then
         button.MouseButton1Click:Connect(callback)
     end
@@ -656,16 +606,16 @@ end
 local function createTabButton(tabName)
     local tabButton = Instance.new("TextButton")
     tabButton.Name = tabName .. "Tab"
-    tabButton.Size = isMobile and UDim2.new(0, 130, 0, 58) or UDim2.new(1, 0, 0, 44)
+    tabButton.Size = isMobile and UDim2.new(0, 120, 0, 50) or UDim2.new(1, 0, 0, 44)
     tabButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    tabButton.BackgroundTransparency = 1 -- Начальная прозрачность 1
+    tabButton.BackgroundTransparency = 0
     tabButton.BorderSizePixel = 0
     tabButton.Text = tabName:upper()
     tabButton.TextColor3 = Color3.fromRGB(180, 180, 180)
-    tabButton.TextSize = isMobile and 16 or 13
+    tabButton.TextSize = isMobile and 14 or 13
     tabButton.Font = Enum.Font.GothamMedium
-    tabButton.TextTransparency = 1
-    tabButton.ZIndex = 8 -- Увеличил ZIndex для вкладок
+    tabButton.TextTransparency = 0
+    tabButton.ZIndex = 8
     tabButton.AutoButtonColor = false
     tabButton.Parent = tabsList
     
@@ -676,7 +626,7 @@ local function createTabButton(tabName)
     local tabStroke = Instance.new("UIStroke")
     tabStroke.Color = Color3.fromRGB(50, 50, 50)
     tabStroke.Thickness = 2
-    tabStroke.Transparency = 1
+    tabStroke.Transparency = 0
     tabStroke.ZIndex = 8
     tabStroke.Parent = tabButton
     
@@ -957,76 +907,17 @@ local function showMenu()
     
     blockGameControls()
     
-    -- Сначала делаем всё видимым (но прозрачным)
+    -- МОМЕНТАЛЬНОЕ ПОЯВЛЕНИЕ БЕЗ АНИМАЦИИ
     mainContainer.Visible = true
     background.Visible = true
+    
     if isMobile and openButton then
         openButton.Visible = false
     end
     
-    -- Анимация появления с правильными ZIndex
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    
-    TweenService:Create(mainContainer, tweenInfo, {
-        BackgroundTransparency = 0
-    }):Play()
-    
-    TweenService:Create(mainStroke, tweenInfo, {
-        Transparency = 0
-    }):Play()
-    
-    TweenService:Create(accentStroke, tweenInfo, {
-        Transparency = 0
-    }):Play()
-    
-    TweenService:Create(background, tweenInfo, {
-        BackgroundTransparency = 0.85
-    }):Play()
-    
-    TweenService:Create(innerBackground, tweenInfo, {
-        BackgroundTransparency = 0.3
-    }):Play()
-    
-    TweenService:Create(topBar, tweenInfo, {
-        BackgroundTransparency = 0
-    }):Play()
-    
-    TweenService:Create(titleLabel, tweenInfo, {
-        TextTransparency = 0
-    }):Play()
-    
-    if closeButton then
-        TweenService:Create(closeButton, tweenInfo, {
-            BackgroundTransparency = 0,
-            TextTransparency = 0
-        }):Play()
-        
-        TweenService:Create(closeButtonStroke, tweenInfo, {
-            Transparency = 0
-        }):Play()
-    end
-    
-    TweenService:Create(tabsContainer, tweenInfo, {
-        BackgroundTransparency = 0
-    }):Play()
-    
-    TweenService:Create(functionsContainer, tweenInfo, {
-        BackgroundTransparency = 0
-    }):Play()
-    
-    -- Показываем кнопки вкладок с анимацией
+    -- Показываем кнопки вкладок сразу
     for _, tabButton in pairs(tabButtons) do
-        TweenService:Create(tabButton, tweenInfo, {
-            BackgroundTransparency = 0,
-            TextTransparency = 0
-        }):Play()
-        
-        local stroke = tabButton:FindFirstChild("UIStroke")
-        if stroke then
-            TweenService:Create(stroke, tweenInfo, {
-                Transparency = 0
-            }):Play()
-        end
+        tabButton.Visible = true
     end
     
     -- Создаем контент
@@ -1036,81 +927,18 @@ end
 local function hideMenu()
     if not isMenuOpen then return end
     
-    -- Анимация исчезновения
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    
-    TweenService:Create(mainContainer, tweenInfo, {
-        BackgroundTransparency = 1
-    }):Play()
-    
-    TweenService:Create(mainStroke, tweenInfo, {
-        Transparency = 1
-    }):Play()
-    
-    TweenService:Create(accentStroke, tweenInfo, {
-        Transparency = 1
-    }):Play()
-    
-    TweenService:Create(background, tweenInfo, {
-        BackgroundTransparency = 1
-    }):Play()
-    
-    TweenService:Create(innerBackground, tweenInfo, {
-        BackgroundTransparency = 1
-    }):Play()
-    
-    TweenService:Create(titleLabel, tweenInfo, {
-        TextTransparency = 1
-    }):Play()
-    
-    if closeButton then
-        TweenService:Create(closeButton, tweenInfo, {
-            BackgroundTransparency = 1,
-            TextTransparency = 1
-        }):Play()
-        
-        TweenService:Create(closeButtonStroke, tweenInfo, {
-            Transparency = 1
-        }):Play()
-    end
-    
-    TweenService:Create(topBar, tweenInfo, {
-        BackgroundTransparency = 1
-    }):Play()
-    
-    TweenService:Create(tabsContainer, tweenInfo, {
-        BackgroundTransparency = 1
-    }):Play()
-    
-    TweenService:Create(functionsContainer, tweenInfo, {
-        BackgroundTransparency = 1
-    }):Play()
-    
-    -- Скрываем кнопки вкладок
-    for _, tabButton in pairs(tabButtons) do
-        TweenService:Create(tabButton, tweenInfo, {
-            BackgroundTransparency = 1,
-            TextTransparency = 1
-        }):Play()
-        
-        local stroke = tabButton:FindFirstChild("UIStroke")
-        if stroke then
-            TweenService:Create(stroke, tweenInfo, {
-                Transparency = 1
-            }):Play()
-        end
-    end
-    
-    -- Ждем завершения анимации
-    task.wait(0.35)
-    
-    -- Только теперь скрываем элементы
+    -- МОМЕНТАЛЬНОЕ СКРЫТИЕ БЕЗ АНИМАЦИИ
     mainContainer.Visible = false
     background.Visible = false
     
     -- Показываем кнопку OPEN на мобильных
     if isMobile and openButton then
         openButton.Visible = true
+    end
+    
+    -- Скрываем все кнопки вкладок
+    for _, tabButton in pairs(tabButtons) do
+        tabButton.Visible = false
     end
     
     if currentContentFrame then
@@ -1132,8 +960,8 @@ end
 
 -- Назначаем обработчики кликов на вкладки
 for tabName, tabButton in pairs(tabButtons) do
-    tabButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+    tabButton.MouseButton1Down:Connect(function()
+        if isMenuOpen then
             showTabContent(tabName)
         end
     end)
@@ -1141,110 +969,20 @@ end
 
 -- Обработчик для кнопки закрытия на мобильных
 if closeButton then
-    closeButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            hideMenu()
-        end
+    closeButton.MouseButton1Down:Connect(function()
+        hideMenu()
     end)
-
-    if not isMobile and UserInputService.MouseEnabled then
-        closeButton.MouseEnter:Connect(function()
-            if not isMenuOpen then return end
-            TweenService:Create(closeButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-            }):Play()
-            TweenService:Create(closeButtonStroke, TweenInfo.new(0.2), {
-                Color = Color3.fromRGB(90, 90, 90)
-            }):Play()
-        end)
-
-        closeButton.MouseLeave:Connect(function()
-            if not isMenuOpen then return end
-            TweenService:Create(closeButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-            }):Play()
-            TweenService:Create(closeButtonStroke, TweenInfo.new(0.2), {
-                Color = Color3.fromRGB(60, 60, 60)
-            }):Play()
-        end)
-    end
 end
 
 -- Обработчик для кнопки открытия на мобильных
 if isMobile and openButton then
-    openButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            toggleMenu()
-        end
-    end)
-    
     openButton.MouseButton1Down:Connect(function()
-        TweenService:Create(openButton, TweenInfo.new(0.1), {
-            BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        }):Play()
-    end)
-    
-    openButton.MouseButton1Up:Connect(function()
-        TweenService:Create(openButton, TweenInfo.new(0.1), {
-            BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        }):Play()
+        showMenu()
     end)
 end
 
 -- Hotkeys для ПК
 if not isMobile and UserInputService.MouseEnabled then
-    for tabName, tabButton in pairs(tabButtons) do
-        tabButton.MouseEnter:Connect(function()
-            if not isMenuOpen then return end
-            
-            local activeTab = nil
-            for tName, tButton in pairs(tabButtons) do
-                if tButton.BackgroundColor3 == Color3.fromRGB(35, 35, 35) then
-                    activeTab = tName
-                    break
-                end
-            end
-            
-            if tabName ~= activeTab then
-                TweenService:Create(tabButton, TweenInfo.new(0.15), {
-                    BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-                    TextColor3 = Color3.fromRGB(220, 220, 220)
-                }):Play()
-                local stroke = tabButton:FindFirstChild("UIStroke")
-                if stroke then
-                    TweenService:Create(stroke, TweenInfo.new(0.15), {
-                        Color = Color3.fromRGB(70, 70, 70)
-                    }):Play()
-                end
-            end
-        end)
-        
-        tabButton.MouseLeave:Connect(function()
-            if not isMenuOpen then return end
-            
-            local activeTab = nil
-            for tName, tButton in pairs(tabButtons) do
-                if tButton.BackgroundColor3 == Color3.fromRGB(35, 35, 35) then
-                    activeTab = tName
-                    break
-                end
-            end
-            
-            if tabName ~= activeTab then
-                TweenService:Create(tabButton, TweenInfo.new(0.15), {
-                    BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-                    TextColor3 = Color3.fromRGB(180, 180, 180)
-                }):Play()
-                local stroke = tabButton:FindFirstChild("UIStroke")
-                if stroke then
-                    TweenService:Create(stroke, TweenInfo.new(0.15), {
-                        Color = Color3.fromRGB(50, 50, 50)
-                    }):Play()
-                end
-            end
-        end)
-    end
-    
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         
