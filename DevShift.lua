@@ -377,7 +377,6 @@ mainContent.BackgroundTransparency = 1
 mainContent.ZIndex = 4
 mainContent.Parent = contentContainer
 
--- Контейнер для вкладок
 local tabsContainer = Instance.new("Frame")
 tabsContainer.Size = isMobile and UDim2.new(1, 0, 0, 50) or UDim2.new(0.2, -4, 1, 0)
 tabsContainer.Position = isMobile and UDim2.new(0, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
@@ -452,12 +451,14 @@ if isMobile then
     local isDraggingOpenButton = false
     local dragStartOpenButton
     local startPosOpenButton
+    local hasDragged = false
     
     openButton.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isDraggingOpenButton = true
             dragStartOpenButton = input.Position
             startPosOpenButton = openButton.Position
+            hasDragged = false
             openButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
         end
     end)
@@ -465,6 +466,9 @@ if isMobile then
     openButton.InputChanged:Connect(function(input)
         if isDraggingOpenButton and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStartOpenButton
+            if math.abs(delta.X) > 3 or math.abs(delta.Y) > 3 then
+                hasDragged = true
+            end
             openButton.Position = UDim2.new(
                 startPosOpenButton.X.Scale, 
                 startPosOpenButton.X.Offset + delta.X,
@@ -478,10 +482,11 @@ if isMobile then
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isDraggingOpenButton = false
             openButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-            local delta = input.Position - (dragStartOpenButton or Vector2.new(0, 0))
-            if math.abs(delta.X) < 5 and math.abs(delta.Y) < 5 then
+            
+            if not hasDragged then
                 showMenu()
             end
+            hasDragged = false
         end
     end)
     
