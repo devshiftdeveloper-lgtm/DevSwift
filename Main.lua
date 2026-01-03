@@ -111,10 +111,13 @@ local function GetRootPart(character)
     return character and character:FindFirstChild("HumanoidRootPart")
 end
 
-local function GetHider()
+function MainModule.GetHider()
     for _, player in pairs(Players:GetPlayers()) do
-        if IsHider(player) and player.Character then
-            return player.Character
+        if player ~= LocalPlayer and player.Character then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 and IsHider(player) then
+                return player.Character
+            end
         end
     end
     return nil
