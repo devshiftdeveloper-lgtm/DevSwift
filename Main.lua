@@ -111,18 +111,6 @@ local function GetRootPart(character)
     return character and character:FindFirstChild("HumanoidRootPart")
 end
 
-function MainModule.GetHider()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local humanoid = player.Character:FindFirstChild("Humanoid")
-            if humanoid and humanoid.Health > 0 and IsHider(player) then
-                return player.Character
-            end
-        end
-    end
-    return nil
-end
-
 local function playerHasKnife(player)
     if not player or not player.Character then return false end
     for _, tool in pairs(player.Character:GetChildren()) do
@@ -150,12 +138,6 @@ local function GetDistance(position1, position2)
     if not position1 or not position2 then return math.huge end
     return (position1 - position2).Magnitude
 end
-
-local function IsHider(player)
-    if not player then return false end
-    return player:GetAttribute("IsHider") == true
-end
-
 
 local function IsSeeker(player)
     if not player then return false end
@@ -270,7 +252,7 @@ for _, animId in pairs(MainModule.Killaura.TeleportAnimations) do
     MainModule.Killaura.TargetAnimationsSet[animId] = true
 end
 
-MainModule.IsHider = function(player)
+local function IsHider(player)
     if not player then return false end
     return player:GetAttribute("IsHider") == true
 end
@@ -280,7 +262,7 @@ local function GetHider()
         local LocalPlayer = game:GetService("Players").LocalPlayer
         if player ~= LocalPlayer and player.Character then
             local humanoid = player.Character:FindFirstChild("Humanoid")
-            if humanoid and humanoid.Health > 0 and MainModule.IsHider(player) then
+            if humanoid and humanoid.Health > 0 and IsHider(player) then  -- ← ИЗМЕНЕНО ЗДЕСЬ
                 return player.Character
             end
         end
